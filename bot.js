@@ -679,8 +679,9 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
         // Owners and premium users always pass, regardless of mode, so the
         // operator can still run commands from any chat when locked down.
         const senderRecord = sender ? db.get('users', sender) : null;
-        const isPremiumUser = Boolean(senderRecord && senderRecord.premium);
-        const isUserOwner = db.isUserBanned(sender) ? false : (msg.key.fromMe || require('./lib/utils').isOwner(sender, owner));
+        const senderBanned = db.isUserBanned(sender);
+        const isPremiumUser = Boolean(senderRecord && senderRecord.premium && !senderBanned);
+        const isUserOwner = senderBanned ? false : (msg.key.fromMe || require('./lib/utils').isOwner(sender, owner) || Boolean(senderRecord && senderRecord.isOwner));
         const isPrivileged = isUserOwner || isPremiumUser;
         if (!isPrivileged && (workMode === 'self' || (workMode === 'private' && isGroup))) {
             skippedMessageIds.add(skipKey(msg));
@@ -814,12 +815,13 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
         // Skip own messages unless they start with prefix (commands) or are pure numeric replies (for download selection)
         if (msg.key.fromMe && !text.startsWith(finalPrefix) && !/^\d+$/.test(text.trim())) continue;
 
-        if (db.isUserBanned(sender)) continue;
+        const dispatchSenderBanned = db.isUserBanned(sender);
+        if (dispatchSenderBanned) continue;
         // Same work-mode gate as the protections loop — owners and premium
         // users always pass. Keeps behaviour consistent across both loops.
         const dispatchSenderRec = sender ? db.get('users', sender) : null;
-        const dispatchIsPremium = Boolean(dispatchSenderRec && dispatchSenderRec.premium);
-        const dispatchIsOwner = msg.key.fromMe || require('./lib/utils').isOwner(sender, owner);
+        const dispatchIsPremium = Boolean(dispatchSenderRec && dispatchSenderRec.premium && !dispatchSenderBanned);
+        const dispatchIsOwner = dispatchSenderBanned ? false : (msg.key.fromMe || require('./lib/utils').isOwner(sender, owner) || Boolean(dispatchSenderRec && dispatchSenderRec.isOwner));
         const dispatchIsPrivileged = dispatchIsOwner || dispatchIsPremium;
         if (!dispatchIsPrivileged && (workMode === 'self' || (workMode === 'private' && from.endsWith('@g.us')))) continue;
 

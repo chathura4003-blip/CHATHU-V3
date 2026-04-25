@@ -1546,6 +1546,7 @@
         const protectedCount = all.filter((group) => group.antiLink || group.antiSpam).length;
         desc.textContent = `${all.length} groups, ${protectedCount} protected`;
       }
+      if (!wrap) return;
       wrap.innerHTML = `
     <div class="cmd-stat">
       <div class="k">Groups</div>
@@ -1602,7 +1603,8 @@
       try {
         State.data.groups = await api('/bot-api/groups');
         const protectedCount = State.data.groups.filter((group) => group.antiLink || group.antiSpam).length;
-        document.getElementById('groupsDesc').textContent = `${State.data.groups.length} groups, ${protectedCount} protected`;
+        const desc = document.getElementById('groupsDesc');
+        if (desc) desc.textContent = `${State.data.groups.length} groups, ${protectedCount} protected`;
         renderGroupsStats();
         renderGroups();
       }
@@ -1644,6 +1646,7 @@
         return !q || haystack.includes(q);
       });
       const tb = document.getElementById('groupsTable');
+      if (!tb) return;
       if (!list.length) { tb.innerHTML = '<tr><td colspan="6" class="empty-row">No groups matched this filter yet. Add one manually or refresh after new group activity.</td></tr>'; return; }
       tb.innerHTML = list.map(g => `<tr>
     <td><div class="entity-meta"><strong>${escapeHtml(g.name || 'Unnamed')}</strong><span class="entity-id">${escapeHtml(g.jid || '')}</span></div></td>
@@ -2028,6 +2031,7 @@
         const pending = (State.data.scheduler || []).filter((item) => !item.sent && !item.failed).length;
         desc.textContent = `${State.data.scheduler.length} jobs tracked, ${pending} pending`;
       }
+      if (!tb) return;
       if (!State.data.scheduler.length) { tb.innerHTML = '<tr><td colspan="6" class="empty-row">No scheduled messages yet. Queue a timed message to see delivery status here.</td></tr>'; return; }
       tb.innerHTML = State.data.scheduler.map(s => `<tr>
     <td class="muted text-sm truncate" style="max-width:340px">${escapeHtml(s.message)}</td>
