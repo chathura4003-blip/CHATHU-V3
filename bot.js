@@ -702,7 +702,7 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
                     }
                 }
 
-                if (group.isMuted && text.startsWith(getPrefix())) {
+                if (group.isMuted && text.startsWith(finalPrefix)) {
                     logger(`Mute: Ignoring command in ${group.name}`);
                     skippedMessageIds.add(skipKey(msg));
                     continue;
