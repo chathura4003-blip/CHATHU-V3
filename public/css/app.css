@@ -213,6 +213,28 @@
       opacity: 0.10;
     }
 
+    /* ── Light theme readability overrides ─────────────────────────────────
+       Pastel text colors (#fcd34d, #fca5a5, #fbbf24, #fde68a, #60a5fa, #a78bfa)
+       were tuned for dark backgrounds and become invisible on the light theme's
+       near-white panels. Re-anchor them to dark Tailwind 700–900 shades so
+       warning / error / info content stays legible. */
+    :root[data-theme="light"] .notice            { color: #78350f; }
+    :root[data-theme="light"] .notice strong     { color: #92400e; }
+    :root[data-theme="light"] .btn-danger        { color: #991b1b; }
+    :root[data-theme="light"] .btn-warn          { color: #92400e; }
+    :root[data-theme="light"] .toast.warn,
+    :root[data-theme="light"] .toast-warn        { color: #92400e; }
+    :root[data-theme="light"] .toast.error,
+    :root[data-theme="light"] .toast-error       { color: #991b1b; }
+    :root[data-theme="light"] .badge.amber       { color: #92400e; }
+    :root[data-theme="light"] .badge.red         { color: #991b1b; }
+    :root[data-theme="light"] .badge.blue        { color: #1e40af; }
+    :root[data-theme="light"] .badge.violet      { color: #5b21b6; }
+    :root[data-theme="light"] .pill.warn         { color: #92400e; }
+    :root[data-theme="light"] .cmd-toggle .state.off { color: #991b1b; }
+    :root[data-theme="light"] .log-line.warn     { color: #92400e; }
+    :root[data-theme="light"] .log-line.error    { color: #991b1b; }
+
     body::before {
       content: '';
       position: fixed;
