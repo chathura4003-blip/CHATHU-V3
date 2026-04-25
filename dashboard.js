@@ -115,6 +115,7 @@ function getSettingsPayload() {
         aiGroupMode: appState.getAiGroupMode(),
         aiSystemInstruction: appState.getAiSystemInstruction(),
         aiMaxWords: appState.getAiMaxWords(),
+        aiTraffic: appState.getAiProcessedCount(),
         premiumCode: cfg.PREMIUM_CODE,
         warnings: validation.warnings,
         runMode: validation.mode.explicitMode,
@@ -567,7 +568,7 @@ const apiHandler = (fn) => async (req, res, next) => {
 // ── Page routes (one HTML file per path) ───────────────────────────────────
 const PAGE_IDS = [
     'dashboard', 'sessions', 'users', 'groups', 'commands',
-    'broadcast', 'autoreply', 'scheduler', 'users_db',
+    'broadcast', 'autoreply', 'scheduler', 'aiengine', 'users_db',
     'files', 'settings', 'logs',
 ];
 

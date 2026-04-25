@@ -67,6 +67,21 @@ module.exports = {
     getCommandsCount: () => {
         try { return require('./lib/db').getSetting('main_commands_count') || _commandsCount; } catch { return _commandsCount; }
     },
+    incAiProcessedCount: () => {
+        try {
+            const db = require('./lib/db');
+            const cur = Number(db.getSetting('ai_processed_count') || 0);
+            const next = cur + 1;
+            db.setSetting('ai_processed_count', next);
+            return next;
+        } catch { return 0; }
+    },
+    getAiProcessedCount: () => {
+        try { return Number(require('./lib/db').getSetting('ai_processed_count') || 0); } catch { return 0; }
+    },
+    resetAiProcessedCount: () => {
+        try { require('./lib/db').setSetting('ai_processed_count', 0); } catch {}
+    },
     setWorkMode: (v) => { 
         _workMode = v; 
         try { require('./lib/db').setSetting('work_mode', v); } catch {}
