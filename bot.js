@@ -812,11 +812,18 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
         cacheMsg(msg);
 
         // Drop echoes of our own outbound messages before any group protections,
-        // command dispatch, or auto-reply logic runs. Line 779 already filters
+        // command dispatch, or auto-reply logic runs. Line 807 already filters
         // the easy cases (self + no prefix + not numeric); this catches the
         // remaining echoed command/reply messages so counters and side-effects
         // don't fire twice.
-        {
+        //
+        // Guard with `!msg.key.fromMe` so we don't drop *legitimate* messages
+        // that a user sends FROM the bot's own WhatsApp inbox. Those arrive
+        // with fromMe=true and sender === bot JID; without this guard the
+        // `sender.startsWith(selfId)` check kills every self-issued command,
+        // e.g. the owner running `.menu` from the bot account's chat with
+        // itself never produces a response.
+        if (!msg.key.fromMe) {
             const selfId = sock.user?.id?.split(':')[0];
             if (selfId && sender.startsWith(selfId)) continue;
         }
