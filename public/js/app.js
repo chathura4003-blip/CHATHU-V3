@@ -2362,6 +2362,9 @@
         setValue('aiSetLang', aiAutoLang);
         setValue('aiSetGroupMode', aiGroupMode);
         safeText('aiEngineStatus', aiAutoReply ? 'ENABLED' : 'DISABLED');
+        const traffic = Number(settings.aiTraffic || 0);
+        State.data.aiTraffic = traffic;
+        safeText('aiStatTraffic', String(traffic));
       } catch (e) { /* silent — page may load before auth */ }
 
       try {
@@ -2380,17 +2383,16 @@
         const statEl = document.getElementById('aiStatStatus');
         if (statEl) {
           statEl.textContent = activeCount > 0 ? activeCount + ' / 3 ACTIVE' : 'NO KEYS';
-          statEl.classList.remove('good', 'warn', 'danger');
-          statEl.classList.add(activeCount > 0 ? 'good' : 'warn');
+          statEl.classList.remove('good', 'info', 'violet');
+          statEl.classList.add(activeCount > 0 ? 'good' : 'info');
         }
         const stab = document.getElementById('aiStatStability');
-        if (stab) stab.textContent = activeCount > 0 ? 'STABLE' : 'IDLE';
+        if (stab) {
+          stab.textContent = activeCount > 0 ? 'STABLE' : 'IDLE';
+          stab.classList.remove('good', 'info', 'violet');
+          stab.classList.add(activeCount > 0 ? 'good' : 'violet');
+        }
       } catch (e) { /* silent */ }
-
-      try {
-        const traffic = (State.data.aiTraffic || 0);
-        safeText('aiStatTraffic', String(traffic));
-      } catch {}
     }
 
     async function saveAiSettings() {

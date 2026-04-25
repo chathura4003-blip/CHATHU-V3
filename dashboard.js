@@ -115,6 +115,7 @@ function getSettingsPayload() {
         aiGroupMode: appState.getAiGroupMode(),
         aiSystemInstruction: appState.getAiSystemInstruction(),
         aiMaxWords: appState.getAiMaxWords(),
+        aiTraffic: appState.getAiProcessedCount(),
         premiumCode: cfg.PREMIUM_CODE,
         warnings: validation.warnings,
         runMode: validation.mode.explicitMode,
