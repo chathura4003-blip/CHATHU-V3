@@ -23,6 +23,9 @@ const NOISY_PATTERNS = [
     /Decrypted message with closed session/i,
     /Closing session: SessionEntry/i,
     /Closing open session in favor of incoming prekey bundle/i,
+    /ExperimentalWarning:/i,
+    /Use `node --trace-warnings/i,
+    /Support for loading ES Module in require\(\) is an experimental feature/i,
 ];
 function isNoisySignalLine(args) {
     try {
