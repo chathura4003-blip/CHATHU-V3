@@ -1,0 +1,48 @@
+# Dependency directories
+node_modules/
+dist/
+
+# Local configuration
+.env
+.env.example
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Bot session and data
+session/
+auth_info_baileys/
+downloads/
+temp/
+*.log
+
+# Databases
+db.json
+
+# Binaries
+yt-dlp
+yt-dlp.exe
+ffmpeg
+ffprobe
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Workspace/IDE
+.agents/
+.local/
+.cache/
+.replit
+.replitignore
+replit.md
+artifacts/
+attached_assets/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+tsconfig.base.json
+tsconfig.json
+.vscode/
+.idea/
