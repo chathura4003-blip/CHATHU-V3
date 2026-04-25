@@ -28,7 +28,11 @@ module.exports = {
   // are in use (see index.js).
   ADMIN_PASS: readString(process.env.ADMIN_PASS, DEFAULT_ADMIN_PASS),
   JWT_SECRET: readString(process.env.JWT_SECRET, DEFAULT_JWT_SECRET),
-  PREMIUM_CODE: process.env.PREMIUM_CODE || "CHATHU2026",
+  // No default value: .setowner accepts this code to grant bot-owner
+  // privileges to ANY sender, so a hardcoded fallback would ship a public
+  // backdoor. Deployments must set PREMIUM_CODE in .env; when unset or
+  // blank, setowner rejects the command (see lib/commands/owner.js).
+  PREMIUM_CODE: readString(process.env.PREMIUM_CODE, ""),
   SESSION_DIR: path.join(__dirname, "session"),
   DOWNLOAD_DIR: path.join(__dirname, "downloads"),
   BROWSER: ["Ubuntu", "Chrome", "20.0.04"],
