@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: supreme-bot
+    env: docker
+    plan: free
+    region: singapore
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: OWNER_NUMBER
+        sync: false # You will need to set this in Render Dashboard after first deploy
+      - key: BOT_NAME
+        value: Supreme Bot
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASS
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
