@@ -672,9 +672,17 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
             continue;
         }
 
-        // Private Mode Check
+        // Work-mode gate.
+        //   public  -> everyone, everywhere
+        //   private -> DMs only for non-owners / non-premium users
+        //   self    -> only fromMe (bot-account) for non-owners / non-premium
+        // Owners and premium users always pass, regardless of mode, so the
+        // operator can still run commands from any chat when locked down.
+        const senderRecord = sender ? db.get('users', sender) : null;
+        const isPremiumUser = Boolean(senderRecord && senderRecord.premium);
         const isUserOwner = db.isUserBanned(sender) ? false : (msg.key.fromMe || require('./lib/utils').isOwner(sender, owner));
-        if (!isUserOwner && (workMode === 'self' || (workMode === 'private' && isGroup))) {
+        const isPrivileged = isUserOwner || isPremiumUser;
+        if (!isPrivileged && (workMode === 'self' || (workMode === 'private' && isGroup))) {
             skippedMessageIds.add(skipKey(msg));
             continue;
         }
@@ -807,7 +815,13 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
         if (msg.key.fromMe && !text.startsWith(finalPrefix) && !/^\d+$/.test(text.trim())) continue;
 
         if (db.isUserBanned(sender)) continue;
-        if (!isUserOwner && (workMode === 'self' || (workMode === 'private' && from.endsWith('@g.us')))) continue;
+        // Same work-mode gate as the protections loop — owners and premium
+        // users always pass. Keeps behaviour consistent across both loops.
+        const dispatchSenderRec = sender ? db.get('users', sender) : null;
+        const dispatchIsPremium = Boolean(dispatchSenderRec && dispatchSenderRec.premium);
+        const dispatchIsOwner = msg.key.fromMe || require('./lib/utils').isOwner(sender, owner);
+        const dispatchIsPrivileged = dispatchIsOwner || dispatchIsPremium;
+        if (!dispatchIsPrivileged && (workMode === 'self' || (workMode === 'private' && from.endsWith('@g.us')))) continue;
 
         cacheMsg(msg);
 
