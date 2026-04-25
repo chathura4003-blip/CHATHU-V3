@@ -214,8 +214,8 @@ function scheduleReconnect(delayMs = 5000) {
 
 async function syncGroups(sock, sessionId = '__main__') {
     try {
-        if (!sock.groupFetchAllFull) return;
-        const groups = await sock.groupFetchAllFull();
+        if (typeof sock.groupFetchAllParticipating !== 'function') return;
+        const groups = await sock.groupFetchAllParticipating();
         Object.entries(groups).forEach(([jid, metadata]) => {
             db.update('groups', jid, {
                 name: metadata.subject,
@@ -672,9 +672,17 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
             continue;
         }
 
-        // Private Mode Check
+        // Work-mode gate.
+        //   public  -> everyone, everywhere
+        //   private -> DMs only for non-owners / non-premium users
+        //   self    -> only fromMe (bot-account) for non-owners / non-premium
+        // Owners and premium users always pass, regardless of mode, so the
+        // operator can still run commands from any chat when locked down.
+        const senderRecord = sender ? db.get('users', sender) : null;
+        const isPremiumUser = Boolean(senderRecord && senderRecord.premium);
         const isUserOwner = db.isUserBanned(sender) ? false : (msg.key.fromMe || require('./lib/utils').isOwner(sender, owner));
-        if (!isUserOwner && (workMode === 'self' || (workMode === 'private' && isGroup))) {
+        const isPrivileged = isUserOwner || isPremiumUser;
+        if (!isPrivileged && (workMode === 'self' || (workMode === 'private' && isGroup))) {
             skippedMessageIds.add(skipKey(msg));
             continue;
         }
@@ -702,7 +710,7 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
                     }
                 }
 
-                if (group.isMuted && text.startsWith(getPrefix())) {
+                if (group.isMuted && text.startsWith(finalPrefix)) {
                     logger(`Mute: Ignoring command in ${group.name}`);
                     skippedMessageIds.add(skipKey(msg));
                     continue;
@@ -807,16 +815,29 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
         if (msg.key.fromMe && !text.startsWith(finalPrefix) && !/^\d+$/.test(text.trim())) continue;
 
         if (db.isUserBanned(sender)) continue;
-        if (!isUserOwner && (workMode === 'self' || (workMode === 'private' && from.endsWith('@g.us')))) continue;
+        // Same work-mode gate as the protections loop — owners and premium
+        // users always pass. Keeps behaviour consistent across both loops.
+        const dispatchSenderRec = sender ? db.get('users', sender) : null;
+        const dispatchIsPremium = Boolean(dispatchSenderRec && dispatchSenderRec.premium);
+        const dispatchIsOwner = msg.key.fromMe || require('./lib/utils').isOwner(sender, owner);
+        const dispatchIsPrivileged = dispatchIsOwner || dispatchIsPremium;
+        if (!dispatchIsPrivileged && (workMode === 'self' || (workMode === 'private' && from.endsWith('@g.us')))) continue;
 
         cacheMsg(msg);
 
         // Drop echoes of our own outbound messages before any group protections,
-        // command dispatch, or auto-reply logic runs. Line 779 already filters
+        // command dispatch, or auto-reply logic runs. Line 807 already filters
         // the easy cases (self + no prefix + not numeric); this catches the
         // remaining echoed command/reply messages so counters and side-effects
         // don't fire twice.
-        {
+        //
+        // Guard with `!msg.key.fromMe` so we don't drop *legitimate* messages
+        // that a user sends FROM the bot's own WhatsApp inbox. Those arrive
+        // with fromMe=true and sender === bot JID; without this guard the
+        // `sender.startsWith(selfId)` check kills every self-issued command,
+        // e.g. the owner running `.menu` from the bot account's chat with
+        // itself never produces a response.
+        if (!msg.key.fromMe) {
             const selfId = sock.user?.id?.split(':')[0];
             if (selfId && sender.startsWith(selfId)) continue;
         }
