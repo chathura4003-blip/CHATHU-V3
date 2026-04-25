@@ -214,8 +214,8 @@ function scheduleReconnect(delayMs = 5000) {
 
 async function syncGroups(sock, sessionId = '__main__') {
     try {
-        if (!sock.groupFetchAllFull) return;
-        const groups = await sock.groupFetchAllFull();
+        if (typeof sock.groupFetchAllParticipating !== 'function') return;
+        const groups = await sock.groupFetchAllParticipating();
         Object.entries(groups).forEach(([jid, metadata]) => {
             db.update('groups', jid, {
                 name: metadata.subject,

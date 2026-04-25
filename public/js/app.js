@@ -11,7 +11,7 @@
       token: localStorage.getItem('chmd_token') || null,
       user: localStorage.getItem('chmd_user') || null,
       socket: null,
-      page: 'dashboard',
+      page: (document.querySelector('meta[name="page"]') || {}).content || 'dashboard',
       activeQrSession: null,
       autoReplyEditingId: null,
       schedulerEditingId: null,
@@ -1380,10 +1380,13 @@
           || (u.number || '').includes(q);
       });
 
-      // Update Mini Stats
-      document.getElementById('statTotalUsers').textContent = list.length;
-      document.getElementById('statOwnerUsers').textContent = list.filter(u => u.isOwner).length;
-      document.getElementById('statActiveUsers').textContent = list.filter(u => u.lastSeen && (Date.now() - new Date(u.lastSeen).getTime() < 1000 * 60 * 60)).length;
+      // Update Mini Stats (users_db page only — skip silently elsewhere).
+      const elTotalUsers = document.getElementById('statTotalUsers');
+      const elOwnerUsers = document.getElementById('statOwnerUsers');
+      const elActiveUsers = document.getElementById('statActiveUsers');
+      if (elTotalUsers) elTotalUsers.textContent = list.length;
+      if (elOwnerUsers) elOwnerUsers.textContent = list.filter(u => u.isOwner).length;
+      if (elActiveUsers) elActiveUsers.textContent = list.filter(u => u.lastSeen && (Date.now() - new Date(u.lastSeen).getTime() < 1000 * 60 * 60)).length;
 
       const tb = document.getElementById('usersDbTable');
       if (!tb) return;
@@ -2071,12 +2074,17 @@
       return (State.data.users || []).length;
     }
     function updateSchedulerPreview() {
-      const targetType = document.getElementById('schTarget').value;
-      const count = getSchedulerTargetCount(targetType, document.getElementById('schTargets').value);
-      const sessionId = normalizeSessionId(document.getElementById('schSession').value);
+      const targetEl = document.getElementById('schTarget');
+      const targetsEl = document.getElementById('schTargets');
+      const sessionEl = document.getElementById('schSession');
+      const previewEl = document.getElementById('schPreview');
+      if (!targetEl || !targetsEl || !sessionEl || !previewEl) return;
+      const targetType = targetEl.value;
+      const count = getSchedulerTargetCount(targetType, targetsEl.value);
+      const sessionId = normalizeSessionId(sessionEl.value);
       const session = uniqueSessions().find(entry => entry.id === sessionId);
       const targetLabel = targetType === 'groups' ? 'all groups' : targetType === 'custom' ? 'custom recipients' : 'all users';
-      document.getElementById('schPreview').innerHTML = `<strong>Target preview</strong>${count} recipient(s) are in scope via ${escapeHtml(targetLabel)} using ${escapeHtml(session?.label || 'Main Bot')}. Double-check timing before this job goes live.`;
+      previewEl.innerHTML = `<strong>Target preview</strong>${count} recipient(s) are in scope via ${escapeHtml(targetLabel)} using ${escapeHtml(session?.label || 'Main Bot')}. Double-check timing before this job goes live.`;
     }
     function syncSchedulerForm() {
       const select = document.getElementById('schSession');
@@ -2088,8 +2096,10 @@
       toggleSchedulerTargets();
     }
     function toggleSchedulerTargets() {
-      const targetType = document.getElementById('schTarget').value;
-      document.getElementById('schTargetsWrap').style.display = targetType === 'custom' ? '' : 'none';
+      const targetEl = document.getElementById('schTarget');
+      const wrapEl = document.getElementById('schTargetsWrap');
+      if (!targetEl || !wrapEl) return;
+      wrapEl.style.display = targetEl.value === 'custom' ? '' : 'none';
       updateSchedulerPreview();
     }
     function resetSchedulerForm() {
@@ -2178,9 +2188,12 @@
       select.innerHTML = sessions.map((session) => `<option value="${escapeHtml(session.id)}">${escapeHtml(session.label)}</option>`).join('');
       select.value = sessions.some((session) => session.id === current) ? current : '__main__';
       const active = sessions.find((session) => session.id === select.value) || sessions[0];
-      document.getElementById('bcSessionSummary').textContent = active
-        ? `${active.label} is currently ${active.status}.`
-        : 'Choose which connected session should deliver this broadcast.';
+      const summary = document.getElementById('bcSessionSummary');
+      if (summary) {
+        summary.textContent = active
+          ? `${active.label} is currently ${active.status}.`
+          : 'Choose which connected session should deliver this broadcast.';
+      }
       updateBroadcastPreview();
     }
     function updateBroadcastPreview() {
