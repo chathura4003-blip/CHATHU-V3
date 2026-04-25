@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <meta name="page" content="autoreply" />
-    <title>Auto-Reply · Chathu MD</title>
+    <meta name="page" content="aiengine" />
+    <title>AI Engine · Chathu MD</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -57,13 +57,13 @@
           <div class="nav-item" data-page="broadcast"><i class="ic"
               style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polygon points=%223 11 22 2 13 21 11 13 3 11%22/></svg>')"></i><span>Broadcast</span>
           </div>
-          <div class="nav-item active" data-page="autoreply"><i class="ic"
+          <div class="nav-item" data-page="autoreply"><i class="ic"
               style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z%22/></svg>')"></i><span>Auto-Reply</span>
           </div>
           <div class="nav-item" data-page="scheduler"><i class="ic"
               style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><circle cx=%2212%22 cy=%2212%22 r=%2210%22/><polyline points=%2212 6 12 12 16 14%22/></svg>')"></i><span>Scheduler</span>
           </div>
-          <div class="nav-item" data-page="aiengine"><i class="ic"
+          <div class="nav-item active" data-page="aiengine"><i class="ic"
               style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M12 2a3 3 0 0 0-3 3v1a3 3 0 0 0-3 3v1a3 3 0 0 0-3 3v3a3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0 3-3 3 3 0 0 0 3-3v-3a3 3 0 0 0-3-3V9a3 3 0 0 0-3-3V5a3 3 0 0 0-3-3z%22/><circle cx=%229%22 cy=%2210%22 r=%221%22/><circle cx=%2215%22 cy=%2210%22 r=%221%22/><path d=%22M9 16h6%22/></svg>')"></i><span>AI Engine</span>
           </div>
           <div class="sb-section">System</div>
@@ -97,7 +97,7 @@
               style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><line x1=%223%22 y1=%2212%22 x2=%2221%22 y2=%2212%22/><line x1=%223%22 y1=%226%22 x2=%2221%22 y2=%226%22/><line x1=%223%22 y1=%2218%22 x2=%2221%22 y2=%2218%22/></svg>')"></i>
           </button>
           <div>
-            <h1 id="topTitle">Auto-Reply</h1>
+            <h1 id="topTitle">AI Engine</h1>
           </div>
           <div class="spacer"></div>
           <div class="stat-pill"><i class="ic"
@@ -110,81 +110,144 @@
           </div>
         </header>
           <main class="content">
-            <div class="page active" id="page-autoreply">
+            <div class="page active" id="page-aiengine">
             <div class="ph">
               <div>
-                <div class="title">Auto-Reply</div>
-                <div class="desc" id="arDesc">Automated trigger-based responses that now run in the bot runtime</div>
+                <div class="title">AI Engine</div>
+                <div class="desc">Provider status, auto-reply behavior, and AI runtime controls</div>
+              </div>
+              <div class="actions">
+                <button class="btn btn-secondary btn-sm" onclick="loadAiEngine()">Refresh</button>
               </div>
             </div>
-            <div class="card mb-4">
-              <div class="card-h">
-                <div class="title" id="arFormTitle">Add Rule</div>
+
+            <div class="stats-pro-grid">
+              <div class="stat-pro-card">
+                <div class="lbl">Provider State</div>
+                <div class="val good" id="aiStatStatus">--</div>
+                <div class="sub">Gemini, OpenRouter, or Groq availability</div>
               </div>
-              <div class="notice-list" id="arEditState" style="display:none">
-                <div class="notice"><strong>Edit mode</strong>You are updating an existing auto-reply rule.</div>
+              <div class="stat-pro-card">
+                <div class="lbl">AI Auto Reply</div>
+                <div class="val info" id="aiEngineStatus">--</div>
+                <div class="sub">Main session response automation</div>
               </div>
-              <div class="grid grid-2">
-                <div class="field"><label>Trigger</label><input class="input" id="arTrig" placeholder="e.g. hello" />
+              <div class="stat-pro-card">
+                <div class="lbl">Traffic</div>
+                <div class="val" id="aiStatTraffic">0</div>
+                <div class="sub">Processed message count</div>
+              </div>
+              <div class="stat-pro-card">
+                <div class="lbl">Stability</div>
+                <div class="val violet" id="aiStatStability">--</div>
+                <div class="sub" id="aiStatTokens">STABLE</div>
+              </div>
+            </div>
+
+            <div class="grid grid-2 gap-4 mt-4">
+              <div class="card">
+                <div class="card-h">
+                  <div class="title">AI Behavior</div>
                 </div>
-                <div class="field"><label>Match Type</label>
-                  <select class="select input" id="arMatch">
-                    <option value="exact">Exact (Whole Text)</option>
-                    <option value="word">Word (Matches anywhere as whole word)</option>
-                    <option value="contains">Contains (Any Substring)</option>
-                    <option value="startsWith">Starts with</option>
-                    <option value="endsWith">Ends with</option>
-                    <option value="regex">Regex (Advanced Pattern)</option>
+                <div class="grid grid-2">
+                  <label class="row"
+                    style="padding:12px;border:1px solid var(--line-2);border-radius:var(--r);justify-content:space-between">
+                    <span><b>AI Auto Reply</b><br /><span class="text-xs dim">Let the main bot answer with AI</span></span>
+                    <span class="switch"><input type="checkbox" id="aiSetAutoReply" /><span class="slider"></span></span>
+                  </label>
+                  <label class="row"
+                    style="padding:12px;border:1px solid var(--line-2);border-radius:var(--r);justify-content:space-between">
+                    <span><b>Voice Replies</b><br /><span class="text-xs dim">Allow generated voice responses</span></span>
+                    <span class="switch"><input type="checkbox" id="aiSetVoice" /><span class="slider"></span></span>
+                  </label>
+                </div>
+                <div class="grid grid-2 mt-3">
+                  <div class="field">
+                    <label>Persona</label>
+                    <select class="select input" id="aiSetPersona">
+                      <option value="friendly">Friendly</option>
+                      <option value="professional">Professional</option>
+                      <option value="funny">Funny</option>
+                      <option value="savage">Savage</option>
+                      <option value="romantic">Romantic</option>
+                      <option value="robot">Robot</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label>Language</label>
+                    <select class="select input" id="aiSetLang">
+                      <option value="auto">Auto Detect</option>
+                      <option value="mixed">Mixed (SI + EN)</option>
+                      <option value="si">Sinhala / Singlish</option>
+                      <option value="en">English Only</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="field mt-3">
+                  <label>Group Reply Mode</label>
+                  <select class="select input" id="aiSetGroupMode">
+                    <option value="mention">Reply on mention only</option>
+                    <option value="always">Reply to every group message</option>
                   </select>
                 </div>
+                <div class="row" style="justify-content:flex-end;margin-top:14px">
+                  <button class="btn btn-primary btn-sm" onclick="saveAiSettings()">Save AI Settings</button>
+                </div>
               </div>
-              <div class="field"><label>Response</label><textarea class="textarea" id="arResp" rows="3"
-                  placeholder="Reply text..."></textarea></div>
-              <div class="grid grid-2">
-                <label class="row"
-                  style="padding:12px;border:1px solid var(--line-2);border-radius:var(--r);justify-content:space-between">
-                  <span><b>Case Sensitive</b><br /><span class="text-xs dim">Match exact letter casing</span></span>
-                  <span class="switch"><input type="checkbox" id="arCaseSensitive" /><span class="slider"></span></span>
-                </label>
-                <label class="row"
-                  style="padding:12px;border:1px solid var(--line-2);border-radius:var(--r);justify-content:space-between">
-                  <span><b>Groups Only</b><br /><span class="text-xs dim">Reply only inside groups</span></span>
-                  <span class="switch"><input type="checkbox" id="arGroupsOnly" /><span class="slider"></span></span>
-                </label>
-              </div>
-              <div class="grid grid-2 mt-3">
-                <label class="row"
-                  style="padding:12px;border:1px solid var(--line-2);border-radius:var(--r);justify-content:space-between">
-                  <span><b>Private Chats Only</b><br /><span class="text-xs dim">Reply only in direct
-                      messages</span></span>
-                  <span class="switch"><input type="checkbox" id="arPmOnly" /><span class="slider"></span></span>
-                </label>
-              </div>
-              <div class="row" style="justify-content:flex-end;gap:8px">
-                <button class="btn btn-ghost btn-sm" id="arCancelBtn" onclick="resetAutoReplyForm()"
-                  style="display:none">Cancel Edit</button>
-                <button class="btn btn-primary btn-sm" id="arSaveBtn" onclick="saveAutoReply()">+ Add Rule</button>
+
+              <div class="card">
+                <div class="card-h">
+                  <div class="title">Provider Health</div>
+                  <div class="actions">
+                    <button class="btn btn-secondary btn-sm" onclick="loadAiEngine()">Validate</button>
+                  </div>
+                </div>
+                <div class="grid grid-1" style="gap:10px">
+                  <div class="row" id="provGemini"
+                    style="padding:12px;border:1px solid var(--line-2);border-radius:var(--r);justify-content:space-between">
+                    <div><b>Gemini</b><br /><span class="text-xs dim" id="statusGemini">Key Missing / Inactive</span></div>
+                    <span class="badge gray" id="badgeGemini">OFFLINE</span>
+                  </div>
+                  <div class="row" id="provOpenRouter"
+                    style="padding:12px;border:1px solid var(--line-2);border-radius:var(--r);justify-content:space-between">
+                    <div><b>OpenRouter</b><br /><span class="text-xs dim" id="statusOpenRouter">Key Missing / Inactive</span></div>
+                    <span class="badge gray" id="badgeOpenRouter">OFFLINE</span>
+                  </div>
+                  <div class="row" id="provGroq"
+                    style="padding:12px;border:1px solid var(--line-2);border-radius:var(--r);justify-content:space-between">
+                    <div><b>Groq</b><br /><span class="text-xs dim" id="statusGroq">Key Missing / Inactive</span></div>
+                    <span class="badge gray" id="badgeGroq">OFFLINE</span>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="card" style="padding:0">
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Trigger</th>
-                      <th>Match</th>
-                      <th>Scope</th>
-                      <th>Response</th>
-                      <th>Active</th>
-                      <th style="text-align:right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="arTable">
-                    <tr>
-                      <td colspan="6" class="empty-row loading">Loading automation rules...</td>
-                    </tr>
-                  </tbody>
-                </table>
+
+            <div class="grid grid-2 gap-4 mt-4">
+              <div class="card">
+                <div class="card-h">
+                  <div class="title">API Keys</div>
+                </div>
+                <div class="field"><label>Gemini API Key</label><input class="input" id="keyGemini" type="password" autocomplete="off" placeholder="Paste new key to update" /></div>
+                <div class="field mt-3"><label>OpenRouter API Key</label><input class="input" id="keyOpenRouter" type="password" autocomplete="off" placeholder="Paste new key to update" /></div>
+                <div class="field mt-3"><label>Groq API Key</label><input class="input" id="keyGroq" type="password" autocomplete="off" placeholder="Paste new key to update" /></div>
+                <div class="row" style="justify-content:flex-end;margin-top:14px">
+                  <button class="btn btn-primary btn-sm" onclick="saveApiKeys()">Update Keys</button>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-h">
+                  <div class="title">Memory</div>
+                </div>
+                <div class="notice-list">
+                  <div class="notice">
+                    <strong>Conversation Memory</strong>
+                    Clear stored AI chat context when replies become stale or you want a fresh behavior reset.
+                  </div>
+                </div>
+                <div class="row" style="justify-content:flex-end;margin-top:14px">
+                  <button class="btn btn-danger btn-sm" onclick="clearAiHistory()">Clear AI History</button>
+                </div>
               </div>
             </div>
           </div>
