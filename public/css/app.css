@@ -3156,6 +3156,10 @@
         --sb-w: 0px
       }
 
+      .layout {
+        grid-template-columns: 1fr
+      }
+
       .sidebar {
         position: fixed;
         inset: 0 auto 0 0;
