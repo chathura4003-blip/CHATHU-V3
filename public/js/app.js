@@ -265,7 +265,7 @@
         setupSocket();
         loadStats();
         setInterval(loadStats, 7000);
-        const loaders = { dashboard: () => { loadSessions(); loadCommands(); loadLogs(); }, sessions: loadSessions, users: loadSessions, groups: loadGroups, commands: loadCommands, autoreply: loadAutoReply, scheduler: loadScheduler, users_db: loadUsers, files: loadFiles, settings: loadSettings, logs: loadLogs, broadcast: loadBroadcastPage };
+        const loaders = { dashboard: () => { loadSessions(); loadCommands(); loadLogs(); }, sessions: loadSessions, users: loadSessions, groups: loadGroups, commands: loadCommands, autoreply: loadAutoReply, scheduler: loadScheduler, users_db: loadUsers, files: loadFiles, settings: loadSettings, logs: loadLogs, broadcast: loadBroadcastPage, aiengine: loadAiEngine };
         if (CURRENT_PAGE && loaders[CURRENT_PAGE]) loaders[CURRENT_PAGE]();
       }
 
@@ -2333,6 +2333,104 @@
       if (!await confirmDialog('Restart the bot? Active sessions may briefly disconnect.', { title: 'Restart bot', okText: 'Restart', danger: true })) return;
       try { await api('/bot-api/restart', { method: 'POST' }); toast('Restart triggered', 'success'); }
       catch (e) { toast(e.message, 'error'); }
+    }
+
+    // ====== AI ENGINE ======
+    async function loadAiEngine() {
+      const safeText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+      const safeBadge = (id, on, label) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = label;
+        el.classList.remove('gray', 'amber', 'red', 'blue', 'violet');
+        el.classList.add(on ? 'blue' : 'gray');
+      };
+      const safeStatus = (id, msg) => { const el = document.getElementById(id); if (el) el.textContent = msg; };
+      try {
+        const settings = await api('/bot-api/settings');
+        State.data.settings = settings || {};
+        const aiAutoReply = !!settings.aiAutoReply;
+        const aiAutoVoice = !!settings.aiAutoVoice;
+        const aiAutoPersona = settings.aiAutoPersona || 'friendly';
+        const aiAutoLang = settings.aiAutoLang || 'auto';
+        const aiGroupMode = settings.aiGroupMode || 'mention';
+        const setChecked = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+        const setValue = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        setChecked('aiSetAutoReply', aiAutoReply);
+        setChecked('aiSetVoice', aiAutoVoice);
+        setValue('aiSetPersona', aiAutoPersona);
+        setValue('aiSetLang', aiAutoLang);
+        setValue('aiSetGroupMode', aiGroupMode);
+        safeText('aiEngineStatus', aiAutoReply ? 'ENABLED' : 'DISABLED');
+      } catch (e) { /* silent — page may load before auth */ }
+
+      try {
+        const keys = await api('/bot-api/bot/check-ai-keys');
+        const providers = [
+          { id: 'Gemini', ok: !!keys.gemini },
+          { id: 'OpenRouter', ok: !!keys.openrouter },
+          { id: 'Groq', ok: !!keys.groq },
+        ];
+        let activeCount = 0;
+        for (const p of providers) {
+          safeBadge('badge' + p.id, p.ok, p.ok ? 'ONLINE' : 'OFFLINE');
+          safeStatus('status' + p.id, p.ok ? 'Key configured · ready' : 'Key Missing / Inactive');
+          if (p.ok) activeCount++;
+        }
+        const statEl = document.getElementById('aiStatStatus');
+        if (statEl) {
+          statEl.textContent = activeCount > 0 ? activeCount + ' / 3 ACTIVE' : 'NO KEYS';
+          statEl.classList.remove('good', 'warn', 'danger');
+          statEl.classList.add(activeCount > 0 ? 'good' : 'warn');
+        }
+        const stab = document.getElementById('aiStatStability');
+        if (stab) stab.textContent = activeCount > 0 ? 'STABLE' : 'IDLE';
+      } catch (e) { /* silent */ }
+
+      try {
+        const traffic = (State.data.aiTraffic || 0);
+        safeText('aiStatTraffic', String(traffic));
+      } catch {}
+    }
+
+    async function saveAiSettings() {
+      const body = {
+        aiAutoReply: document.getElementById('aiSetAutoReply')?.checked,
+        aiAutoVoice: document.getElementById('aiSetVoice')?.checked,
+        aiAutoPersona: document.getElementById('aiSetPersona')?.value,
+        aiAutoLang: document.getElementById('aiSetLang')?.value,
+        aiGroupMode: document.getElementById('aiSetGroupMode')?.value,
+      };
+      try {
+        await api('/bot-api/settings', { method: 'POST', body: JSON.stringify(body) });
+        toast('AI settings saved', 'success');
+        await loadAiEngine();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function saveApiKeys() {
+      const gemini = document.getElementById('keyGemini')?.value || '';
+      const openrouter = document.getElementById('keyOpenRouter')?.value || '';
+      const groq = document.getElementById('keyGroq')?.value || '';
+      const body = {};
+      if (gemini.trim()) body.gemini = gemini.trim();
+      if (openrouter.trim()) body.openrouter = openrouter.trim();
+      if (groq.trim()) body.groq = groq.trim();
+      if (!Object.keys(body).length) { toast('Paste at least one key to update', 'warn'); return; }
+      try {
+        await api('/bot-api/bot/api-keys', { method: 'POST', body: JSON.stringify(body) });
+        toast('API keys updated', 'success');
+        ['keyGemini', 'keyOpenRouter', 'keyGroq'].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ''; });
+        await loadAiEngine();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function clearAiHistory() {
+      if (!await confirmDialog('Clear all stored AI conversation memory?', { title: 'Clear AI history', okText: 'Clear', danger: true })) return;
+      try {
+        await api('/bot-api/bot/ai-history', { method: 'DELETE' });
+        toast('AI history cleared', 'success');
+      } catch (e) { toast(e.message, 'error'); }
     }
 
     // ====== LOGS ======

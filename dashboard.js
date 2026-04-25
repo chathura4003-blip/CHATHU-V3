@@ -567,7 +567,7 @@ const apiHandler = (fn) => async (req, res, next) => {
 // ── Page routes (one HTML file per path) ───────────────────────────────────
 const PAGE_IDS = [
     'dashboard', 'sessions', 'users', 'groups', 'commands',
-    'broadcast', 'autoreply', 'scheduler', 'users_db',
+    'broadcast', 'autoreply', 'scheduler', 'aiengine', 'users_db',
     'files', 'settings', 'logs',
 ];
 
