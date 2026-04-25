@@ -1630,7 +1630,10 @@ io.on('connection', (socket) => {
         status: appState.getStatus(),
         number: appState.getNumber(),
     });
-    appState.getLogs().slice(-30).forEach(l => socket.emit('log', l));
+    // Historic logs are served via the REST endpoint `/bot-api/logs` at page
+    // load — replaying them over the socket here produced duplicate entries in
+    // the Live Logs view (initial render from the API plus a second pass from
+    // this loop). Live entries continue to stream via logger's `_io.emit`.
 });
 
 // ── Fallback ───────────────────────────────────────────────────────────────
