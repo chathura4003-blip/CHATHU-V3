@@ -2716,7 +2716,7 @@
       const COMMANDS = [
         { id: 'go-dashboard', label: 'Go to Dashboard', kbd: 'g d', run: () => location.href = '/dashboard' },
         { id: 'go-sessions',  label: 'Go to Sessions',  kbd: 'g s', run: () => location.href = '/sessions' },
-        { id: 'go-users',     label: 'Go to Fleet / Users', kbd: 'g u', run: () => location.href = '/users' },
+        { id: 'go-users',     label: 'Go to Fleet Orchestration', kbd: 'g f', run: () => location.href = '/users' },
         { id: 'go-groups',    label: 'Go to Groups', run: () => location.href = '/groups' },
         { id: 'go-commands',  label: 'Go to Commands', run: () => location.href = '/commands' },
         { id: 'go-broadcast', label: 'Go to Broadcast', run: () => location.href = '/broadcast' },
