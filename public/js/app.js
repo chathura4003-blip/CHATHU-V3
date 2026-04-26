@@ -609,7 +609,7 @@
       ProTable.exportCsv(list, [
         { key: 'id', label: 'Session ID' },
         { key: 'name', label: 'Display Name' },
-        { key: 'connected', label: 'Connected', value: (s) => s.connected ? 'yes' : 'no' },
+        { key: 'connected', label: 'Connected', value: (s) => s.status === 'Connected' ? 'yes' : 'no' },
         { key: 'status', label: 'Status' },
         { key: 'phoneNumber', label: 'Phone', value: (s) => s.phoneNumber || s.phone || '' },
         { key: 'workMode', label: 'Work Mode' },
