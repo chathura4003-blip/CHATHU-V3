@@ -15,6 +15,7 @@ const config = require('./config');
 const { PORT, ADMIN_USER, ADMIN_PASS, JWT_SECRET, DOWNLOAD_DIR } = config;
 const appState = require('./state');
 const { setIO, logger } = require('./logger');
+const metrics = require('./lib/metrics');
 const db = require('./lib/db');
 const runtimeSettings = require('./lib/runtime-settings');
 const { validateConfig } = require('./lib/config-validation');
@@ -588,9 +589,26 @@ app.get('/bot-api/health', (req, res) => {
     const number = appState.getNumber();
     const startedAt = appState.getConnectedAt() || null;
     const uptime = Math.round(process.uptime());
-    const memUsedMB = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    const mem = process.memoryUsage();
+    const memUsedMB = Math.round(mem.rss / 1024 / 1024);
 
     const ok = !!number || status === 'Connected' || status === 'Connecting' || status === 'Idle (Paused)' || status === 'Awaiting QR Scan' || status === 'Awaiting Pair Code';
+
+    // ── healthcheck v2 — best-effort extra signals, never blocks the response.
+    let dbOk = false;
+    try { require('./lib/db').getSetting('main_processed_count'); dbOk = true; } catch {}
+
+    let fleetSessions = 0;
+    try {
+        const sm = require('./session-manager');
+        if (sm && typeof sm.list === 'function') {
+            fleetSessions = (sm.list() || []).filter(s => s && (s.status === 'Connected' || s.connected)).length;
+        }
+    } catch {}
+
+    let aiProvider = null;
+    try { aiProvider = require('./state').getAiProvider ? require('./state').getAiProvider() : null; } catch {}
+
     res.status(ok ? 200 : 503).json({
         ok,
         status: status || 'Unknown',
@@ -598,9 +616,42 @@ app.get('/bot-api/health', (req, res) => {
         startedAt,
         uptime,
         memUsedMB,
+        memHeapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
         version: require('./package.json').version,
         node: process.version,
+        dbOk,
+        fleetSessions,
+        aiProvider,
+        processedTotal: (appState.getProcessedCount && appState.getProcessedCount()) || 0,
+        commandsTotal: (appState.getCommandsCount && appState.getCommandsCount()) || 0,
     });
+});
+
+// ── Prometheus exposition (no auth — scrape with Prometheus / Grafana / etc.)
+app.get('/metrics', (req, res) => {
+    try {
+        // Refresh dynamic gauges before rendering.
+        const status = appState.getStatus();
+        metrics.gauge('chathu_connected', null, '1 when the main socket reports Connected, 0 otherwise')
+            .set(status === 'Connected' ? 1 : 0);
+        metrics.gauge('chathu_messages_processed_total', null, 'Lifetime messages observed by the bot (mirrors processedCount)')
+            .set((appState.getProcessedCount && appState.getProcessedCount()) || 0);
+        metrics.gauge('chathu_commands_run_total', null, 'Lifetime commands successfully dispatched')
+            .set((appState.getCommandsCount && appState.getCommandsCount()) || 0);
+        try {
+            const sm = require('./session-manager');
+            if (sm && typeof sm.list === 'function') {
+                const list = sm.list() || [];
+                const connected = list.filter(s => s && (s.status === 'Connected' || s.connected)).length;
+                metrics.gauge('chathu_fleet_sessions_total', null, 'Total fleet sessions registered').set(list.length);
+                metrics.gauge('chathu_fleet_sessions_connected', null, 'Fleet sessions currently connected').set(connected);
+            }
+        } catch {}
+        res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+        res.send(metrics.render());
+    } catch (e) {
+        res.status(500).send(`# error rendering metrics: ${e.message}\n`);
+    }
 });
 
 // ── JWT middleware ─────────────────────────────────────────────────────────
