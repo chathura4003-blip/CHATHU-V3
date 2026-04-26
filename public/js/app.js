@@ -145,19 +145,45 @@
     });
 
     // ====== TOAST ======
+    // Pro toast queue: max 4 visible, click-to-dismiss, aria-live region.
+    const TOAST_MAX = 4;
+    const TOAST_TTL = 4000;
     function toast(message, type = 'info') {
       const wrap = document.getElementById('toasts');
+      if (!wrap) return;
+      // Promote container to a polite live region for screen readers.
+      if (!wrap.hasAttribute('aria-live')) {
+        wrap.setAttribute('aria-live', 'polite');
+        wrap.setAttribute('aria-atomic', 'true');
+        wrap.setAttribute('role', 'status');
+      }
       const el = document.createElement('div');
       el.className = 'toast ' + type;
+      el.setAttribute('role', type === 'error' ? 'alert' : 'status');
+      el.title = 'Click to dismiss';
       const icons = {
         success: 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4L12 14.01l-3-3',
         error: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 8v4M12 16h.01',
         info: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01',
       };
-      el.innerHTML = `<i class="ic" style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22${encodeURIComponent(icons[type] || icons.info)}%22/></svg>')"></i><span>${escapeHtml(message)}</span>`;
+      el.innerHTML = `<i class="ic" aria-hidden="true" style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22${encodeURIComponent(icons[type] || icons.info)}%22/></svg>')"></i><span>${escapeHtml(message)}</span>`;
+      const dismiss = () => {
+        if (el.dataset.dismissing) return;
+        el.dataset.dismissing = '1';
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(20px)';
+        setTimeout(() => el.remove(), 300);
+      };
+      el.addEventListener('click', dismiss);
       wrap.appendChild(el);
-      setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(20px)'; setTimeout(() => el.remove(), 300); }, 3500);
+      // Cap visible toasts — drop the oldest if over the limit.
+      const visible = Array.from(wrap.querySelectorAll('.toast:not([data-dismissing])'));
+      if (visible.length > TOAST_MAX) {
+        visible.slice(0, visible.length - TOAST_MAX).forEach(t => t.click());
+      }
+      setTimeout(dismiss, TOAST_TTL);
     }
+    window.toast = toast;
 
     function escapeHtml(s) { return String(s ?? '').replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
     function fmtUptime(sec) {
@@ -2602,6 +2628,8 @@
       modal.classList.remove('open');
       if (id === 'qrModal') State.activeQrSession = null;
     }
+    window.openModal = openModal;
+    window.closeModal = closeModal;
     document.addEventListener('click', e => {
       const modal = e.target?.classList?.contains('modal-back') ? e.target : null;
       if (modal?.id) closeModal(modal.id);
@@ -2624,7 +2652,8 @@
     document.getElementById('schTargets')?.addEventListener('input', updateSchedulerPreview);
     document.getElementById('arGroupsOnly')?.addEventListener('change', () => syncAutoReplyScopeToggles('groups'));
     document.getElementById('arPmOnly')?.addEventListener('change', () => syncAutoReplyScopeToggles('pm'));
-    window.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-back.open').forEach(m => closeModal(m.id)); });
+    // Escape handling lives in the keyboard shortcut block below — it closes
+    // only the topmost open modal so stacked dialogs don't all dismiss at once.
 
     if (typeof resetAutoReplyForm === 'function') try { resetAutoReplyForm(); } catch {}
       if (typeof resetSchedulerForm === 'function') try { resetSchedulerForm(); } catch {}
@@ -2687,7 +2716,7 @@
       const COMMANDS = [
         { id: 'go-dashboard', label: 'Go to Dashboard', kbd: 'g d', run: () => location.href = '/dashboard' },
         { id: 'go-sessions',  label: 'Go to Sessions',  kbd: 'g s', run: () => location.href = '/sessions' },
-        { id: 'go-users',     label: 'Go to Fleet / Users', kbd: 'g u', run: () => location.href = '/users' },
+        { id: 'go-users',     label: 'Go to Fleet Orchestration', kbd: 'g f', run: () => location.href = '/users' },
         { id: 'go-groups',    label: 'Go to Groups', run: () => location.href = '/groups' },
         { id: 'go-commands',  label: 'Go to Commands', run: () => location.href = '/commands' },
         { id: 'go-broadcast', label: 'Go to Broadcast', run: () => location.href = '/broadcast' },
@@ -2701,6 +2730,9 @@
         { id: 'restart',      label: 'Restart bot…', run: () => { try { typeof restartBot === 'function' && restartBot(); } catch {} } },
         { id: 'logout',       label: 'Sign out', run: () => { try { typeof logout === 'function' && logout(); } catch {} } },
         { id: 'send-test',    label: 'Send a test message…', run: () => window.openTestMessageModal && window.openTestMessageModal() },
+        { id: 'aiengine',     label: 'Go to AI Engine', run: () => location.href = '/aiengine' },
+        { id: 'users-db',     label: 'Go to User Management', run: () => location.href = '/users_db' },
+        { id: 'shortcuts',    label: 'Show keyboard shortcuts', kbd: '?', run: () => { if (typeof buildShortcutHelpModal === 'function') buildShortcutHelpModal(); window.openModal && window.openModal('shortcutHelpModal'); } },
       ];
 
       const input = back.querySelector('#paletteInput');
@@ -2751,9 +2783,71 @@
     })();
 
     // ----- Keyboard shortcuts ---------------------------------------------
+    // Page jump: 'g' followed by a letter routes to a known page.
+    const PAGE_KEYS = {
+      d: 'dashboard', s: 'sessions', f: 'users', g: 'groups', c: 'commands',
+      u: 'users_db', b: 'broadcast', a: 'autoreply', k: 'scheduler',
+      i: 'aiengine', m: 'files', t: 'settings', l: 'logs',
+    };
+    let _gPending = 0;
+
+    function closeTopmostModal() {
+      const open = Array.from(document.querySelectorAll('.modal-back.open'));
+      if (!open.length) return false;
+      const last = open[open.length - 1];
+      if (window.closeModal) window.closeModal(last.id); else last.classList.remove('open');
+      return true;
+    }
+    window.closeTopmostModal = closeTopmostModal;
+
+    function buildShortcutHelpModal() {
+      if (document.getElementById('shortcutHelpModal')) return;
+      const items = [
+        ['Ctrl+K', 'Open command palette'],
+        ['/', 'Focus command palette search'],
+        ['?', 'Show this shortcut help'],
+        ['Ctrl+Shift+L', 'Toggle light/dark theme'],
+        ['Esc', 'Close active modal'],
+        ['g d', 'Go to Dashboard'],
+        ['g s', 'Go to Sessions'],
+        ['g f', 'Go to Fleet Orchestration'],
+        ['g g', 'Go to Groups'],
+        ['g c', 'Go to Commands'],
+        ['g u', 'Go to User Management'],
+        ['g b', 'Go to Broadcast'],
+        ['g a', 'Go to Auto-Reply'],
+        ['g k', 'Go to Scheduler'],
+        ['g i', 'Go to AI Engine'],
+        ['g m', 'Go to Files'],
+        ['g t', 'Go to Settings'],
+        ['g l', 'Go to Live Logs'],
+      ];
+      const rows = items.map(([k, label]) => `
+        <div class="shortcut-row">
+          <kbd>${escapeHtml(k)}</kbd>
+          <span class="shortcut-label">${escapeHtml(label)}</span>
+        </div>`).join('');
+      const modal = document.createElement('div');
+      modal.className = 'modal-back';
+      modal.id = 'shortcutHelpModal';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:560px" role="dialog" aria-modal="true" aria-labelledby="shortcutHelpTitle">
+          <h3 id="shortcutHelpTitle">Keyboard Shortcuts</h3>
+          <p class="muted">Speed up navigation across the dashboard.</p>
+          <div class="shortcut-grid">${rows}</div>
+          <div class="actions" style="margin-top:18px">
+            <button class="btn btn-primary" onclick="closeModal('shortcutHelpModal')">Close</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+    }
+
     window.addEventListener('keydown', (e) => {
       const target = e.target;
       const inField = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      if (e.key === 'Escape') {
+        if (closeTopmostModal()) { e.preventDefault(); return; }
+      }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         if (window.openCommandPalette) window.openCommandPalette();
@@ -2765,13 +2859,34 @@
         return;
       }
       if (inField) return;
+      // '?' (Shift+/) shows shortcut help — must be checked before plain '/'.
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        buildShortcutHelpModal();
+        openModal('shortcutHelpModal');
+        return;
+      }
       if (e.key === '/') {
         const palette = document.getElementById('paletteBack');
         if (palette && !palette.classList.contains('open')) {
           e.preventDefault();
           if (window.openCommandPalette) window.openCommandPalette();
         }
+        return;
       }
+      // Vim-style page nav: press 'g', then within 1.2s press a letter.
+      const k = e.key.toLowerCase();
+      if (_gPending && Date.now() < _gPending && PAGE_KEYS[k] && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        _gPending = 0;
+        e.preventDefault();
+        navigate(PAGE_KEYS[k]);
+        return;
+      }
+      if (k === 'g' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        _gPending = Date.now() + 1200;
+        return;
+      }
+      _gPending = 0;
     });
 
     // ----- Sysmetrics canvas chart ----------------------------------------
@@ -2906,6 +3021,46 @@
           toast(e.message || 'Send failed', 'error');
         }
       });
+    })();
+
+    // ----- Accessibility & shortcut hint button --------------------------
+    (function mountA11yPolish() {
+      // Floating "?" hint button — opens the shortcut help modal.
+      if (!document.getElementById('shortcutHintBtn') && document.getElementById('toasts')) {
+        const btn = document.createElement('button');
+        btn.id = 'shortcutHintBtn';
+        btn.type = 'button';
+        btn.className = 'btn btn-ghost shortcut-hint';
+        btn.setAttribute('aria-label', 'Show keyboard shortcuts');
+        btn.title = 'Keyboard shortcuts (?)';
+        btn.textContent = '?';
+        btn.addEventListener('click', () => {
+          buildShortcutHelpModal();
+          openModal('shortcutHelpModal');
+        });
+        document.body.appendChild(btn);
+      }
+      // Aria labels on icon-only buttons (best effort — picks up onclick verb).
+      const sweep = () => {
+        document.querySelectorAll('button').forEach((b) => {
+          if (b.hasAttribute('aria-label')) return;
+          const text = (b.innerText || b.textContent || '').trim();
+          if (text) return;
+          const onclick = b.getAttribute('onclick') || '';
+          const guess = onclick.match(/(\w+)\(/);
+          if (guess) b.setAttribute('aria-label', guess[1].replace(/[A-Z]/g, ' $&').trim());
+        });
+      };
+      sweep();
+      // Re-sweep when DOM is mutated (e.g. tables re-rendered) — debounced.
+      if (window.MutationObserver) {
+        let pending = 0;
+        const mo = new MutationObserver(() => {
+          if (pending) return;
+          pending = setTimeout(() => { pending = 0; sweep(); }, 250);
+        });
+        mo.observe(document.body, { childList: true, subtree: true });
+      }
     })();
 
     // Expose a helper button on the Sessions page header (if present)
