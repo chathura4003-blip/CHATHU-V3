@@ -1,0 +1,32 @@
+node_modules
+npm-debug.log*
+.git
+.github
+.vscode
+.idea
+.DS_Store
+
+# Local-only state — must NOT be baked into the image
+session/
+sessions/
+downloads/
+public/uploads/
+*.log
+debug.log
+db.json
+.env
+.env.*
+!.env.example
+
+# Build / test artefacts
+coverage/
+.nyc_output/
+dist/
+build/
+tmp/
+.tmp/
+
+# Editor backups
+*.swp
+*.bak
+*~

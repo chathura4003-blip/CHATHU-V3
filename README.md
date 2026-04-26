@@ -77,7 +77,34 @@ curl -s http://localhost:5000/bot-api/health | jq
 
 Returns `200` with status/uptime/version when the bot is connected/awaiting link,
 `503` otherwise. Suitable for Docker `HEALTHCHECK`, Render / Fly readiness probes,
-or any external uptime monitor.
+or any external uptime monitor. Healthcheck v2 also exposes:
+
+| Field | Meaning |
+| --- | --- |
+| `dbOk` | `true` when the local SQLite-style db is reachable |
+| `fleetSessions` | Count of fleet sub-sessions currently `Connected` |
+| `aiProvider` | Last selected AI provider (gemini / openrouter / groq / null) |
+| `processedTotal` / `commandsTotal` | Lifetime counters mirrored from the dashboard stats |
+| `memHeapUsedMB` | V8 heap used (resident is also reported as `memUsedMB`) |
+
+### 📈 Prometheus metrics
+
+```bash
+curl -s http://localhost:5000/metrics
+```
+
+Exposes the standard text exposition format. Scrape with Prometheus / Grafana
+Agent / VictoriaMetrics. Notable series:
+
+- `chathu_connected` — gauge, `1` when the main socket is up
+- `chathu_messages_processed_total` / `chathu_commands_run_total`
+- `chathu_messages_received_total{session="main|fleet"}`
+- `chathu_messages_sent_total` / `chathu_messages_send_retries_total` /
+  `chathu_messages_send_failures_total` (from `lib/safe-send.js`)
+- `chathu_fleet_sessions_total` / `chathu_fleet_sessions_connected`
+- `chathu_plugins_loaded_total` / `chathu_plugins_failed_total`
+- Defaults: `chathu_process_uptime_seconds`, `chathu_process_resident_memory_bytes`,
+  `chathu_process_heap_used_bytes`
 
 ### 📜 Audit log
 
@@ -107,6 +134,62 @@ dependencies from the final layer, and includes `HEALTHCHECK --interval=30s` tha
 polls `/bot-api/health`. A process manager (Docker `--restart`, Fly, Render, pm2 or
 systemd) is expected — the bot will intentionally `exit(1)` on a non-noisy uncaught
 exception rather than continue in an undefined state.
+
+### 🐙 Compose (with optional Redis)
+
+For a one-command local stack, `docker-compose.yml` boots the bot plus a
+`redis:7-alpine` companion (used for the per-user rate-limit cache when
+`CHATHU_RATE_LIMIT_BACKEND=redis`):
+
+```bash
+cp .env.example .env             # or wire your secrets in some other way
+docker compose up -d              # bot + redis
+docker compose logs -f bot
+docker compose down               # stops both, keeps named volumes
+```
+
+Named volumes `chathu-data`, `chathu-downloads`, `chathu-db` and `chathu-redis`
+hold all stateful files so re-creating containers does not log you out of WhatsApp
+or wipe your scheduled broadcasts.
+
+---
+
+## 🧩 Plugin loader
+
+Drop a `*.js` file into `lib/plugins/` and it will be auto-loaded at boot:
+
+```js
+// lib/plugins/my-plugin.js
+module.exports = {
+  name: 'my-plugin',
+  onLoad({ log, metrics }) {
+    log.info('hello from my-plugin');
+    metrics.counter('myplugin_hits_total', null, 'Plugin hits').inc();
+  },
+};
+```
+
+Failures in any single plugin are isolated — the bot keeps running. See
+`lib/plugins/example-ping.js` for a copy-paste starting point (off by default;
+set `CHATHU_PLUGIN_PING=1` to enable).
+
+---
+
+## 🔧 Environment variables (cheat sheet)
+
+| Var | Default | Notes |
+| --- | --- | --- |
+| `PORT` | `5000` | Dashboard + bot HTTP port |
+| `ADMIN_USER` / `ADMIN_PASS` | `admin` / `chathura123` | Use `npm run hash-pass` for prod |
+| `JWT_SECRET` | random per boot | **Set this in production** so tokens survive restarts |
+| `OWNER_NUMBER` | unset | E.164, e.g. `94771234567` — gives owner privileges |
+| `LOG_FORMAT` | `pretty` | Set to `json` for log-aggregator-friendly output |
+| `LOG_LEVEL` | `info` | One of `trace`, `debug`, `info`, `warn`, `error` |
+| `GEMINI_API_KEYS` | unset | Comma-separated; fan-out across all keys |
+| `OPENROUTER_API_KEYS` | unset | Same |
+| `GROQ_API_KEYS` | unset | Same |
+| `CHATHU_RATE_LIMIT_BACKEND` | `memory` | Or `redis` (with `REDIS_URL`) |
+| `CHATHU_PLUGIN_PING` | `0` | Set to `1` to enable the bundled example plugin |
 
 ---
 

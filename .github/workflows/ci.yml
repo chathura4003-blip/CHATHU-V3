@@ -6,10 +6,37 @@ on:
   pull_request:
     branches: [master]
 
+# Cancel in-progress runs for the same ref so we don't burn minutes on
+# successive commits to the same PR.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   syntax-check:
+    name: syntax-check (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["18", "20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Syntax-check JS sources
+        run: npm run syntax-check
+
+  audit:
+    name: npm audit (informational)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,5 +45,5 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Syntax-check JS sources
-        run: npm run syntax-check
+      - name: Run npm audit (production deps only)
+        run: npm audit --production --audit-level=high || true
