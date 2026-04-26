@@ -2652,7 +2652,8 @@
     document.getElementById('schTargets')?.addEventListener('input', updateSchedulerPreview);
     document.getElementById('arGroupsOnly')?.addEventListener('change', () => syncAutoReplyScopeToggles('groups'));
     document.getElementById('arPmOnly')?.addEventListener('change', () => syncAutoReplyScopeToggles('pm'));
-    window.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-back.open').forEach(m => closeModal(m.id)); });
+    // Escape handling lives in the keyboard shortcut block below — it closes
+    // only the topmost open modal so stacked dialogs don't all dismiss at once.
 
     if (typeof resetAutoReplyForm === 'function') try { resetAutoReplyForm(); } catch {}
       if (typeof resetSchedulerForm === 'function') try { resetSchedulerForm(); } catch {}
