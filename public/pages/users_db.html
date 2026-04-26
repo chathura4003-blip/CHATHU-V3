@@ -127,11 +127,11 @@
 
             <div class="user-management-header"
               style="background: var(--panel); border: 1px solid var(--line-2); border-radius: 20px; padding: 20px; margin-bottom: 24px; backdrop-filter: blur(20px); box-shadow: var(--shadow-lg)">
-              <div
+              <div class="users-db-toolbar"
                 style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between">
 
                 <!-- Left: Stats Block -->
-                <div style="display: flex; gap: 24px; align-items: center">
+                <div class="users-db-stats" style="display: flex; gap: 24px; align-items: center">
                   <div class="mini-stat">
                     <div
                       style="font-size: 0.6rem; color: var(--txt-3); text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 4px">
@@ -158,16 +158,16 @@
                 </div>
 
                 <!-- Right: Quick Register Block -->
-                <div
+                <div class="users-db-register"
                   style="display: flex; gap: 12px; align-items: flex-end; background: rgba(255,255,255,0.03); padding: 12px 16px; border-radius: 16px; border: 1px solid var(--line-2)">
                   <div class="field" style="margin: 0">
                     <label style="font-size: 0.6rem; margin-bottom: 6px">Quick Register (Phone)</label>
-                    <input class="input" id="newUserNumber" placeholder="947XXXXXXXX"
+                    <input class="input udb-input" id="newUserNumber" placeholder="947XXXXXXXX"
                       style="width: 160px; height: 38px; font-size: 0.85rem; background: rgba(0,0,0,0.2)" />
                   </div>
                   <div class="field" style="margin: 0">
                     <label style="font-size: 0.6rem; margin-bottom: 6px">Initial Role</label>
-                    <select class="select input" id="newUserRole"
+                    <select class="select input udb-input" id="newUserRole"
                       style="width: 130px; height: 38px; font-size: 0.85rem; background: rgba(0,0,0,0.2)">
                       <option value="standard">Standard</option>
                       <option value="premium">Premium</option>

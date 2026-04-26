@@ -2807,7 +2807,36 @@
       box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, .06);
       animation: slideIn .3s cubic-bezier(.22, 1, .36, 1);
       position: relative;
-      overflow: hidden
+      overflow: hidden;
+      color: #f1f5f9
+    }
+
+    /* Modal always renders on a dark gradient regardless of theme — force
+       light-on-dark text + readable form controls inside any modal. */
+    .modal,
+    .modal h1, .modal h2, .modal h3, .modal h4, .modal h5,
+    .modal p, .modal label, .modal b, .modal strong, .modal span,
+    .modal td, .modal th, .modal li {
+      color: #f1f5f9
+    }
+    .modal .muted, .modal .text-xs.dim, .modal .desc {
+      color: rgba(241, 245, 249, .68)
+    }
+    .modal .label {
+      color: rgba(241, 245, 249, .82)
+    }
+    .modal .input,
+    .modal input.input,
+    .modal select.input,
+    .modal textarea.input {
+      color: #f1f5f9;
+      background: rgba(8, 12, 20, .42);
+      border: 1px solid rgba(255, 255, 255, .12)
+    }
+    .modal .input::placeholder { color: rgba(241, 245, 249, .42) }
+    .modal select.input option { color: #15171a; background: #ffffff }
+    .modal .control-card {
+      color: #f1f5f9
     }
 
     .modal::before {
@@ -3287,6 +3316,82 @@
 
       .fleet-chip-row {
         margin-top: 4px
+      }
+
+      .users-db-toolbar {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 16px !important
+      }
+
+      .users-db-stats {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px !important
+      }
+
+      .users-db-register {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 10px !important
+      }
+
+      .users-db-register .udb-input {
+        width: 100% !important
+      }
+
+      .users-db-register .btn {
+        width: 100%;
+        justify-content: center
+      }
+
+      .pro-table {
+        font-size: .78rem
+      }
+
+      .actions {
+        flex-wrap: wrap;
+        gap: 6px !important
+      }
+
+      .actions .btn {
+        flex: 0 0 auto
+      }
+
+      .control-card {
+        flex-direction: column;
+        align-items: stretch
+      }
+
+      .bot-settings-body {
+        grid-template-columns: 1fr !important
+      }
+
+      .bot-settings-body .bot-nav {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255, 255, 255, .06)
+      }
+
+      .bot-settings-body .bot-nav .bot-nav-item {
+        flex: 1 1 auto;
+        min-width: 30%
+      }
+
+      #botSettingsModal .modal {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 100vh;
+        border-radius: 0
+      }
+
+      #botSettingsModal .modal-footer {
+        justify-content: stretch !important
+      }
+
+      #botSettingsModal .modal-footer .btn {
+        flex: 1 1 calc(33% - 8px)
       }
     }
 
