@@ -119,7 +119,30 @@
               <div class="actions">
                 <input class="input" id="groupsSearch" placeholder="Search groups, JIDs, or sessions..."
                   style="max-width:280px" oninput="renderGroups()" />
+                <select class="input select" id="groupsProtectionFilter" onchange="renderGroups()" style="height:36px;padding:0 12px;font-size:0.85rem">
+                  <option value="all">All protections</option>
+                  <option value="antiLink">Anti-Link only</option>
+                  <option value="antiSpam">Anti-Spam only</option>
+                  <option value="welcome">Welcome only</option>
+                  <option value="muted">Muted only</option>
+                  <option value="none">Unprotected</option>
+                </select>
+                <button class="btn btn-ghost btn-sm" onclick="exportGroupsCsv()" title="Export filtered groups as CSV" style="height:36px">CSV</button>
                 <button class="btn btn-secondary btn-sm" onclick="loadGroups()">Refresh</button>
+              </div>
+            </div>
+            <div class="pt-bulk-bar" id="groupsBulkBar" role="toolbar" aria-label="Bulk group actions">
+              <div class="pt-bulk-left">
+                <span class="pt-bulk-count"><b id="groupsBulkCount">0</b> selected</span>
+                <button class="btn btn-ghost btn-sm" onclick="toggleAllGroupSelect(false)">Clear</button>
+              </div>
+              <div class="pt-bulk-right">
+                <button class="btn btn-secondary btn-sm" onclick="bulkGroupsAction('antiLink_on')">Enable Anti-Link</button>
+                <button class="btn btn-secondary btn-sm" onclick="bulkGroupsAction('antiLink_off')">Disable Anti-Link</button>
+                <button class="btn btn-secondary btn-sm" onclick="bulkGroupsAction('welcome_on')">Enable Welcome</button>
+                <button class="btn btn-secondary btn-sm" onclick="bulkGroupsAction('muted_on')">Mute</button>
+                <button class="btn btn-secondary btn-sm" onclick="bulkGroupsAction('muted_off')">Unmute</button>
+                <button class="btn btn-danger btn-sm" onclick="bulkGroupsAction('delete')">Delete</button>
               </div>
             </div>
             <div class="entity-shell">
@@ -207,19 +230,10 @@
               <div class="card" style="padding:0">
                 <div class="table-wrap">
                   <table>
-                    <thead>
-                      <tr>
-                        <th>Group</th>
-                        <th>Session</th>
-                        <th>Members</th>
-                        <th>Protections</th>
-                        <th>Status</th>
-                        <th style="text-align:right">Actions</th>
-                      </tr>
-                    </thead>
+                    <thead id="groupsHead"></thead>
                     <tbody id="groupsTable">
                       <tr>
-                        <td colspan="6" class="empty-row loading">Loading group controls...</td>
+                        <td colspan="7" class="empty-row loading">Loading group controls...</td>
                       </tr>
                     </tbody>
                   </table>

@@ -186,6 +186,85 @@
     window.toast = toast;
 
     function escapeHtml(s) { return String(s ?? '').replace(/[&<>\"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+    // ====== PRO TABLE UTILS (sort, selection, CSV export) ======
+    const ProTable = {
+      _sortKey: (ns) => 'chmd_sort_' + ns,
+      _selection: Object.create(null),
+      getSort(ns) {
+        try { const raw = localStorage.getItem(this._sortKey(ns)); if (raw) return JSON.parse(raw); } catch {}
+        return { key: null, dir: 'asc' };
+      },
+      setSort(ns, state) {
+        try { localStorage.setItem(this._sortKey(ns), JSON.stringify(state || { key: null, dir: 'asc' })); } catch {}
+      },
+      toggleSort(ns, key) {
+        const cur = this.getSort(ns);
+        let next;
+        if (cur.key !== key) next = { key, dir: 'asc' };
+        else if (cur.dir === 'asc') next = { key, dir: 'desc' };
+        else next = { key: null, dir: 'asc' };
+        this.setSort(ns, next);
+        return next;
+      },
+      applySort(rows, ns, accessors) {
+        const st = this.getSort(ns);
+        if (!st.key || !accessors || !accessors[st.key]) return rows;
+        const acc = accessors[st.key];
+        const sorted = [...rows].sort((a, b) => {
+          const va = acc(a), vb = acc(b);
+          if (va == null && vb == null) return 0;
+          if (va == null) return 1;
+          if (vb == null) return -1;
+          if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+          return String(va).localeCompare(String(vb), undefined, { numeric: true, sensitivity: 'base' });
+        });
+        return st.dir === 'desc' ? sorted.reverse() : sorted;
+      },
+      sortIndicator(ns, key) {
+        const st = this.getSort(ns);
+        if (st.key !== key) return '<span class="pt-sort-ic" aria-hidden="true">↕</span>';
+        return st.dir === 'asc'
+          ? '<span class="pt-sort-ic active" aria-hidden="true">▲</span>'
+          : '<span class="pt-sort-ic active" aria-hidden="true">▼</span>';
+      },
+      // selection
+      _set(ns) { if (!this._selection[ns]) this._selection[ns] = new Set(); return this._selection[ns]; },
+      isSelected(ns, id) { return this._set(ns).has(String(id)); },
+      toggleSelect(ns, id) {
+        const s = this._set(ns); const k = String(id);
+        if (s.has(k)) s.delete(k); else s.add(k);
+        return s.size;
+      },
+      selectAll(ns, ids) { const s = this._set(ns); ids.forEach(id => s.add(String(id))); return s.size; },
+      clearSelection(ns) { this._set(ns).clear(); },
+      selectionCount(ns) { return this._set(ns).size; },
+      selectionIds(ns) { return Array.from(this._set(ns)); },
+      // CSV export
+      exportCsv(rows, columns, filename) {
+        const esc = (v) => {
+          const s = v == null ? '' : String(v);
+          if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+          return s;
+        };
+        const header = columns.map(c => esc(c.label || c.key)).join(',');
+        const body = (rows || []).map(r => columns.map(c => {
+          const v = typeof c.value === 'function' ? c.value(r) : r[c.key];
+          return esc(v);
+        }).join(',')).join('\n');
+        const csv = '\uFEFF' + header + '\n' + body;
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const stamp = new Date().toISOString().replace(/[:T]/g, '-').replace(/\..+/, '');
+        a.download = (filename || 'export') + '-' + stamp + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+      },
+    };
+    window.ProTable = ProTable;
     function fmtUptime(sec) {
       sec = parseInt(sec) || 0;
       const d = Math.floor(sec / 86400);
@@ -524,6 +603,22 @@
         syncBroadcastForm();
       } catch (e) { toast(e.message, 'error'); }
     }
+    window.exportSessionsCsv = function () {
+      const list = State.data.sessions || [];
+      if (!list.length) return toast('Nothing to export', 'info');
+      ProTable.exportCsv(list, [
+        { key: 'id', label: 'Session ID' },
+        { key: 'name', label: 'Display Name' },
+        { key: 'connected', label: 'Connected', value: (s) => s.connected ? 'yes' : 'no' },
+        { key: 'status', label: 'Status' },
+        { key: 'phoneNumber', label: 'Phone', value: (s) => s.phoneNumber || s.phone || '' },
+        { key: 'workMode', label: 'Work Mode' },
+        { key: 'mode', label: 'Mode' },
+        { key: 'autoStatus', label: 'Auto-status', value: (s) => s.autoStatus ? 'yes' : 'no' },
+        { key: 'lastSeen', label: 'Last Seen' },
+      ], 'chathu-sessions');
+      toast('Exported ' + list.length + ' sessions', 'success');
+    };
 
     function updateFleetLastSync() {
       const el = document.getElementById('fleetLastSync');
@@ -1509,14 +1604,110 @@
     function renderUsersStats_v2() {
       // Stats removed as requested
     }
-    function renderUsers() {
+    const USERS_NS = 'users';
+    const USERS_SORT_ACCESSORS = {
+      name: (u) => (u.pushName || u.number || '').toLowerCase(),
+      jid: (u) => (u.jid || '').toLowerCase(),
+      balance: (u) => Number(u.balance || 0),
+      joined: (u) => u.joinedAt ? new Date(u.joinedAt).getTime() : 0,
+      lastSeen: (u) => u.lastSeen ? new Date(u.lastSeen).getTime() : 0,
+      status: (u) => u.isOwner ? 3 : (u.premium ? 2 : (u.banned ? 0 : 1)),
+    };
+    function usersFilteredList() {
       const q = (document.getElementById('usersDbSearch')?.value || '').toLowerCase();
-      const list = State.data.users.filter(u => {
-        return !q
+      const statusFilter = document.getElementById('usersStatusFilter')?.value || 'all';
+      const base = State.data.users.filter(u => {
+        const matchesQ = !q
           || u.jid.toLowerCase().includes(q)
           || (u.pushName || '').toLowerCase().includes(q)
           || (u.number || '').includes(q);
+        let matchesStatus = true;
+        if (statusFilter === 'owner') matchesStatus = !!u.isOwner;
+        else if (statusFilter === 'premium') matchesStatus = !!u.premium;
+        else if (statusFilter === 'banned') matchesStatus = !!u.banned;
+        else if (statusFilter === 'standard') matchesStatus = !u.isOwner && !u.premium && !u.banned;
+        return matchesQ && matchesStatus;
       });
+      return ProTable.applySort(base, USERS_NS, USERS_SORT_ACCESSORS);
+    }
+    window.sortUsers = function (key) {
+      ProTable.toggleSort(USERS_NS, key);
+      renderUsers();
+    };
+    window.exportUsersCsv = function () {
+      const list = usersFilteredList();
+      if (!list.length) return toast('Nothing to export', 'info');
+      ProTable.exportCsv(list, [
+        { key: 'pushName', label: 'Name' },
+        { key: 'number', label: 'Number' },
+        { key: 'jid', label: 'JID' },
+        { key: 'balance', label: 'Balance', value: (u) => u.balance || 0 },
+        { key: 'isOwner', label: 'Owner', value: (u) => u.isOwner ? 'yes' : 'no' },
+        { key: 'premium', label: 'Premium', value: (u) => u.premium ? 'yes' : 'no' },
+        { key: 'banned', label: 'Banned', value: (u) => u.banned ? 'yes' : 'no' },
+        { key: 'joinedAt', label: 'Joined' },
+        { key: 'lastSeen', label: 'Last Seen' },
+      ], 'chathu-users');
+      toast('Exported ' + list.length + ' users', 'success');
+    };
+    window.toggleUserSelect = function (jid) {
+      ProTable.toggleSelect(USERS_NS, jid);
+      updateUsersBulkBar();
+    };
+    window.toggleAllUserSelect = function (checked) {
+      if (checked) {
+        const ids = usersFilteredList().map(u => u.realJid || u.jid);
+        ProTable.selectAll(USERS_NS, ids);
+      } else {
+        ProTable.clearSelection(USERS_NS);
+      }
+      renderUsers();
+    };
+    async function bulkUsersAction(action) {
+      const ids = ProTable.selectionIds(USERS_NS);
+      if (!ids.length) return toast('Select users first', 'info');
+      const titles = {
+        ban: 'Ban selected users?',
+        unban: 'Unban selected users?',
+        premium_on: 'Grant premium to selected users?',
+        premium_off: 'Revoke premium from selected users?',
+        delete: 'Delete selected user records?',
+      };
+      if (!await confirmDialog(`${titles[action] || 'Apply to'} ${ids.length} users`, { okText: 'Apply', danger: action === 'delete' || action === 'ban' })) return;
+      const tasks = ids.map(async (jid) => {
+        try {
+          if (action === 'delete') {
+            return api('/bot-api/users/' + encodeURIComponent(jid), { method: 'DELETE' });
+          }
+          const payload = { jid };
+          if (action === 'ban') payload.banned = true;
+          else if (action === 'unban') payload.banned = false;
+          else if (action === 'premium_on') payload.premium = true;
+          else if (action === 'premium_off') payload.premium = false;
+          return api('/bot-api/users/upsert', { method: 'POST', body: JSON.stringify(payload) });
+        } catch (e) { return { __err: e.message }; }
+      });
+      const results = await Promise.allSettled(tasks);
+      const ok = results.filter(r => r.status === 'fulfilled' && !(r.value && r.value.__err)).length;
+      const fail = ids.length - ok;
+      ProTable.clearSelection(USERS_NS);
+      await loadUsers();
+      toast(`Applied to ${ok} users${fail ? `, ${fail} failed` : ''}`, fail ? 'error' : 'success');
+    }
+    window.bulkUsersAction = bulkUsersAction;
+    function updateUsersBulkBar() {
+      const bar = document.getElementById('usersBulkBar');
+      const count = ProTable.selectionCount(USERS_NS);
+      if (!bar) return;
+      const label = document.getElementById('usersBulkCount');
+      if (label) label.textContent = String(count);
+      bar.classList.toggle('active', count > 0);
+    }
+    function sortableTh(ns, key, label, extraStyle) {
+      return `<th onclick="sortUsers('${key}')" style="cursor:pointer;padding:18px 20px;color:var(--txt-3);text-transform:uppercase;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;border-bottom:1px solid var(--line-2);user-select:none;${extraStyle || ''}" title="Click to sort">${label} ${ProTable.sortIndicator(ns, key)}</th>`;
+    }
+    function renderUsers() {
+      const list = usersFilteredList();
 
       // Update Mini Stats (users_db page only — skip silently elsewhere).
       const elTotalUsers = document.getElementById('statTotalUsers');
@@ -1526,13 +1717,30 @@
       if (elOwnerUsers) elOwnerUsers.textContent = list.filter(u => u.isOwner).length;
       if (elActiveUsers) elActiveUsers.textContent = list.filter(u => u.lastSeen && (Date.now() - new Date(u.lastSeen).getTime() < 1000 * 60 * 60)).length;
 
+      // Refresh sortable table header
+      const head = document.getElementById('usersDbHead');
+      if (head) {
+        const allSelected = list.length > 0 && list.every(u => ProTable.isSelected(USERS_NS, u.realJid || u.jid));
+        head.innerHTML = `
+          <tr style="background: rgba(255,255,255,0.02)">
+            <th style="width:44px;padding:18px 0 18px 20px;border-bottom:1px solid var(--line-2)"><input type="checkbox" class="pt-check" aria-label="Select all" onchange="toggleAllUserSelect(this.checked)" ${allSelected ? 'checked' : ''}></th>
+            ${sortableTh(USERS_NS, 'name', 'User Identity')}
+            ${sortableTh(USERS_NS, 'balance', 'Credits &amp; Wallet')}
+            ${sortableTh(USERS_NS, 'status', 'Authorization')}
+            <th style="padding:18px 20px;color:var(--txt-3);text-transform:uppercase;font-size:0.65rem;font-weight:800;letter-spacing:0.1em;border-bottom:1px solid var(--line-2);text-align:right">Actions</th>
+          </tr>`;
+      }
+
       const tb = document.getElementById('usersDbTable');
       if (!tb) return;
       if (!list.length) {
         tb.innerHTML = '<tr><td colspan="5" class="empty-row">No matching user records found in database.</td></tr>';
+        updateUsersBulkBar();
         return;
       }
       tb.innerHTML = list.map(u => {
+        const selId = u.realJid || u.jid;
+        const selected = ProTable.isSelected(USERS_NS, selId);
         const initials = (u.pushName || 'U').charAt(0).toUpperCase();
         const lastSeenDate = u.lastSeen ? new Date(u.lastSeen) : null;
         const isActive = lastSeenDate && (Date.now() - lastSeenDate.getTime() < 1000 * 60 * 10); // 10 mins
@@ -1540,7 +1748,8 @@
         const joinedDate = u.joinedAt ? new Date(u.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown';
 
         return `
-        <tr style="border-bottom: 1px solid var(--line); transition: all 0.3s ease">
+        <tr style="border-bottom: 1px solid var(--line); transition: all 0.3s ease" class="${selected ? 'pt-row-selected' : ''}">
+          <td style="width:44px;padding:16px 0 16px 20px"><input type="checkbox" class="pt-check" aria-label="Select user" ${selected ? 'checked' : ''} onchange="toggleUserSelect(decodeURIComponent('${encodeURIComponent(selId)}'))"></td>
           <td style="padding: 16px 20px">
             <div class="user-id-cell">
               <div class="user-avatar ${u.isOwner ? 'owner' : ''}" style="width:44px; height:44px; font-size:1.1rem; border-radius:14px; background: ${u.isOwner ? 'var(--grad-accent)' : 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)'}">
@@ -1593,6 +1802,7 @@
           </td>
         </tr>`;
       }).join('');
+      updateUsersBulkBar();
     }
     function editUser(jid) {
       const u = findManagedUserEntry(jid);
@@ -1777,16 +1987,109 @@
         renderGroups();
       } catch (e) { toast(e.message, 'error'); }
     }
-    function renderGroups() {
+    const GROUPS_NS = 'groups';
+    const GROUPS_SORT_ACCESSORS = {
+      name: (g) => (g.name || '').toLowerCase(),
+      session: (g) => normalizeSessionId(g.sessionId),
+      members: (g) => Number(g.memberCount || 0),
+      protections: (g) => (g.antiLink ? 8 : 0) + (g.antiSpam ? 4 : 0) + (g.welcome || g.welcomeEnabled ? 2 : 0) + (g.isMuted ? 1 : 0),
+    };
+    function groupsFilteredList() {
       const q = (document.getElementById('groupsSearch')?.value || '').toLowerCase();
-      const list = State.data.groups.filter((group) => {
+      const pf = document.getElementById('groupsProtectionFilter')?.value || 'all';
+      const base = State.data.groups.filter((group) => {
         const haystack = [group.name, group.jid, group.sessionId].filter(Boolean).join(' ').toLowerCase();
-        return !q || haystack.includes(q);
+        const matchesQ = !q || haystack.includes(q);
+        let matchesPf = true;
+        if (pf === 'antiLink') matchesPf = !!(group.antiLink || group.antilink);
+        else if (pf === 'antiSpam') matchesPf = !!group.antiSpam;
+        else if (pf === 'welcome') matchesPf = !!(group.welcome || group.welcomeEnabled);
+        else if (pf === 'muted') matchesPf = !!group.isMuted;
+        else if (pf === 'none') matchesPf = !(group.antiLink || group.antilink || group.antiSpam || group.welcome || group.welcomeEnabled);
+        return matchesQ && matchesPf;
       });
+      return ProTable.applySort(base, GROUPS_NS, GROUPS_SORT_ACCESSORS);
+    }
+    window.sortGroups = function (key) { ProTable.toggleSort(GROUPS_NS, key); renderGroups(); };
+    window.exportGroupsCsv = function () {
+      const list = groupsFilteredList();
+      if (!list.length) return toast('Nothing to export', 'info');
+      ProTable.exportCsv(list, [
+        { key: 'name', label: 'Name' },
+        { key: 'jid', label: 'JID' },
+        { key: 'sessionId', label: 'Session', value: (g) => normalizeSessionId(g.sessionId) },
+        { key: 'memberCount', label: 'Members', value: (g) => g.memberCount || 0 },
+        { key: 'antiLink', label: 'AntiLink', value: (g) => (g.antiLink || g.antilink) ? 'yes' : 'no' },
+        { key: 'antiSpam', label: 'AntiSpam', value: (g) => g.antiSpam ? 'yes' : 'no' },
+        { key: 'welcome', label: 'Welcome', value: (g) => (g.welcome || g.welcomeEnabled) ? 'yes' : 'no' },
+        { key: 'isMuted', label: 'Muted', value: (g) => g.isMuted ? 'yes' : 'no' },
+      ], 'chathu-groups');
+      toast('Exported ' + list.length + ' groups', 'success');
+    };
+    window.toggleGroupSelect = function (jid) { ProTable.toggleSelect(GROUPS_NS, jid); updateGroupsBulkBar(); };
+    window.toggleAllGroupSelect = function (checked) {
+      if (checked) { const ids = groupsFilteredList().map(g => g.jid); ProTable.selectAll(GROUPS_NS, ids); }
+      else ProTable.clearSelection(GROUPS_NS);
+      renderGroups();
+    };
+    async function bulkGroupsAction(action) {
+      const ids = ProTable.selectionIds(GROUPS_NS);
+      if (!ids.length) return toast('Select groups first', 'info');
+      if (!await confirmDialog(`Apply "${action}" to ${ids.length} groups?`, { okText: 'Apply', danger: action === 'delete' })) return;
+      const tasks = ids.map(async (jid) => {
+        try {
+          if (action === 'delete') return api('/bot-api/groups/' + encodeURIComponent(jid), { method: 'DELETE' });
+          const body = {};
+          if (action === 'antiLink_on') body.antiLink = true;
+          else if (action === 'antiLink_off') body.antiLink = false;
+          else if (action === 'welcome_on') body.welcome = true;
+          else if (action === 'welcome_off') body.welcome = false;
+          else if (action === 'muted_on') body.isMuted = true;
+          else if (action === 'muted_off') body.isMuted = false;
+          return api('/bot-api/groups/' + encodeURIComponent(jid), { method: 'PATCH', body: JSON.stringify(body) });
+        } catch (e) { return { __err: e.message }; }
+      });
+      const results = await Promise.allSettled(tasks);
+      const ok = results.filter(r => r.status === 'fulfilled' && !(r.value && r.value.__err)).length;
+      const fail = ids.length - ok;
+      ProTable.clearSelection(GROUPS_NS);
+      await loadGroups();
+      toast(`Applied to ${ok} groups${fail ? `, ${fail} failed` : ''}`, fail ? 'error' : 'success');
+    }
+    window.bulkGroupsAction = bulkGroupsAction;
+    function updateGroupsBulkBar() {
+      const bar = document.getElementById('groupsBulkBar');
+      if (!bar) return;
+      const count = ProTable.selectionCount(GROUPS_NS);
+      const label = document.getElementById('groupsBulkCount');
+      if (label) label.textContent = String(count);
+      bar.classList.toggle('active', count > 0);
+    }
+    function groupsSortTh(key, label, extraStyle) {
+      return `<th onclick="sortGroups('${key}')" style="cursor:pointer;user-select:none;${extraStyle || ''}" title="Click to sort">${label} ${ProTable.sortIndicator(GROUPS_NS, key)}</th>`;
+    }
+    function renderGroups() {
+      const list = groupsFilteredList();
+      const head = document.getElementById('groupsHead');
+      if (head) {
+        const allSelected = list.length > 0 && list.every(g => ProTable.isSelected(GROUPS_NS, g.jid));
+        head.innerHTML = `<tr>
+          <th style="width:44px;padding-left:14px"><input type="checkbox" class="pt-check" aria-label="Select all groups" onchange="toggleAllGroupSelect(this.checked)" ${allSelected ? 'checked' : ''}></th>
+          ${groupsSortTh('name', 'Group')}
+          ${groupsSortTh('session', 'Session')}
+          ${groupsSortTh('members', 'Members')}
+          ${groupsSortTh('protections', 'Protections')}
+          <th>Status</th>
+          <th style="text-align:right">Actions</th>
+        </tr>`;
+      }
       const tb = document.getElementById('groupsTable');
       if (!tb) return;
-      if (!list.length) { tb.innerHTML = '<tr><td colspan="6" class="empty-row">No groups matched this filter yet. Add one manually or refresh after new group activity.</td></tr>'; return; }
-      tb.innerHTML = list.map(g => `<tr>
+      if (!list.length) { tb.innerHTML = '<tr><td colspan="7" class="empty-row">No groups matched this filter yet. Add one manually or refresh after new group activity.</td></tr>'; updateGroupsBulkBar(); return; }
+      tb.innerHTML = list.map(g => {
+        const selected = ProTable.isSelected(GROUPS_NS, g.jid);
+        return `<tr class="${selected ? 'pt-row-selected' : ''}">
+    <td style="width:44px;padding-left:14px"><input type="checkbox" class="pt-check" aria-label="Select group" ${selected ? 'checked' : ''} onchange="toggleGroupSelect(decodeURIComponent('${encodeURIComponent(g.jid)}'))"></td>
     <td><div class="entity-meta"><strong>${escapeHtml(g.name || 'Unnamed')}</strong><span class="entity-id">${escapeHtml(g.jid || '')}</span></div></td>
     <td><span class="badge gray">${escapeHtml(normalizeSessionId(g.sessionId) === '__main__' ? 'Main Bot' : normalizeSessionId(g.sessionId))}</span></td>
     <td class="money">${g.memberCount || 0}</td>
@@ -1807,7 +2110,9 @@
       <button class="btn btn-secondary btn-sm" onclick="editGroup(decodeURIComponent('${encodeURIComponent(g.jid)}'))">Edit</button>
       <button class="btn btn-danger btn-sm" onclick="removeGroup(decodeURIComponent('${encodeURIComponent(g.jid)}'))">Remove</button>
     </div></td>
-  </tr>`).join('');
+  </tr>`;
+      }).join('');
+      updateGroupsBulkBar();
     }
     function groupSwitch(jid, key, val, label) {
       const encodedJid = encodeURIComponent(jid);
@@ -1918,10 +2223,10 @@
       if (!tags.length) tags.push('<span class="pill">Open Access</span>');
       return `<div class="cmd-inline">${tags.join('')}</div>`;
     }
-    function renderCommands() {
+    function commandsFilteredList() {
       const q = (document.getElementById('cmdsSearch')?.value || '').toLowerCase();
       const statusFilter = document.getElementById('cmdStatusFilter')?.value || 'all';
-      const list = State.data.commands.filter((command) => {
+      return State.data.commands.filter((command) => {
         const name = (command.name || '').toLowerCase();
         const category = (command.category || 'General').toLowerCase();
         const description = (command.description || '').toLowerCase();
@@ -1932,6 +2237,26 @@
         const matchesStatus = statusFilter === 'all' || (statusFilter === 'enabled' ? isEnabled : !isEnabled);
         return matchesQuery && matchesCategory && matchesStatus;
       });
+    }
+    window.exportCommandsCsv = function () {
+      const list = commandsFilteredList();
+      if (!list.length) return toast('Nothing to export', 'info');
+      ProTable.exportCsv(list, [
+        { key: 'name', label: 'Name' },
+        { key: 'category', label: 'Category' },
+        { key: 'enabled', label: 'Enabled', value: (c) => c.enabled !== false ? 'yes' : 'no' },
+        { key: 'ownerOnly', label: 'OwnerOnly', value: (c) => c.ownerOnly ? 'yes' : 'no' },
+        { key: 'premiumOnly', label: 'PremiumOnly', value: (c) => c.premiumOnly ? 'yes' : 'no' },
+        { key: 'groupOnly', label: 'GroupOnly', value: (c) => c.groupOnly ? 'yes' : 'no' },
+        { key: 'aliases', label: 'Aliases', value: (c) => Array.isArray(c.aliases) ? c.aliases.join(' | ') : '' },
+        { key: 'cooldown', label: 'Cooldown (s)', value: (c) => c.cooldown || 0 },
+        { key: 'usageCount', label: 'UsageCount', value: (c) => c.usageCount || 0 },
+        { key: 'description', label: 'Description' },
+      ], 'chathu-commands');
+      toast('Exported ' + list.length + ' commands', 'success');
+    };
+    function renderCommands() {
+      const list = commandsFilteredList();
       const tb = document.getElementById('cmdsTable');
       if (!tb) return;
       if (!list.length) {

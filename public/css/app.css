@@ -680,6 +680,60 @@
       border-bottom: none;
     }
 
+    /* ===== Pro Table utilities (sort, select, bulk bar) ===== */
+    .pt-sort-ic {
+      display: inline-block;
+      font-size: 0.7rem;
+      margin-left: 4px;
+      opacity: 0.45;
+      transition: opacity 0.18s;
+    }
+    .pt-sort-ic.active { opacity: 1; color: var(--brand); }
+    th[onclick]:hover .pt-sort-ic { opacity: 0.85; }
+    .pt-check {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: var(--brand);
+    }
+    .pt-row-selected td {
+      background: rgba(16, 185, 129, 0.05) !important;
+    }
+    .pt-bulk-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 18px;
+      margin-bottom: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line-2);
+      border-radius: 14px;
+      box-shadow: var(--shadow-lg);
+      flex-wrap: wrap;
+    }
+    .pt-bulk-bar.active { display: flex; animation: ptBulkIn 0.18s ease-out; }
+    .pt-bulk-left, .pt-bulk-right {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .pt-bulk-count {
+      font-size: 0.85rem;
+      color: var(--txt-2);
+      padding-right: 6px;
+    }
+    .pt-bulk-count b {
+      color: var(--brand);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    @keyframes ptBulkIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .bot-id-cell {
       display: flex;
       flex-direction: column;
