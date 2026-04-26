@@ -190,6 +190,7 @@ set `CHATHU_PLUGIN_PING=1` to enable).
 | `GROQ_API_KEYS` | unset | Same |
 | `CHATHU_RATE_LIMIT_BACKEND` | `memory` | Or `redis` (with `REDIS_URL`) |
 | `CHATHU_PLUGIN_PING` | `0` | Set to `1` to enable the bundled example plugin |
+| `DB_FILE` | `db.json` (repo root) | Override the JSON store path; absolute or relative. Compose sets `/app/db/db.json` so the named volume actually persists state |
 
 ---
 

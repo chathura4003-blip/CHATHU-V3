@@ -36,6 +36,9 @@ services:
       GROQ_API_KEYS: ${GROQ_API_KEYS:-}
       CHATHU_RATE_LIMIT_BACKEND: ${CHATHU_RATE_LIMIT_BACKEND:-memory}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      # Redirect the JSON store into the chathu-db volume so re-creating
+      # this container does not wipe users/groups/scheduler/broadcasts.
+      DB_FILE: /app/db/db.json
     volumes:
       - chathu-data:/app/session
       - chathu-downloads:/app/downloads
