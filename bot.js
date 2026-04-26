@@ -11,6 +11,7 @@ const {
 const pino = require('pino');
 const QRCode = require('qrcode');
 const { logger } = require('./logger');
+const metrics = require('./lib/metrics');
 const { loadCommands, handleCommand } = require('./lib/handler');
 const { findAutoReply } = require('./lib/automation-runtime');
 const { normalizeSriLankanPhoneNumber } = require('./lib/phone-normalizer');
@@ -229,9 +230,26 @@ async function syncGroups(sock, sessionId = '__main__') {
     }
 }
 
+// Plugin loader runs once on startup — loads any user plugins from lib/plugins/.
+let _pluginsLoaded = false;
+function loadPluginsOnce() {
+    if (_pluginsLoaded) return;
+    _pluginsLoaded = true;
+    try {
+        const plugins = require('./lib/plugins');
+        const result = plugins.loadAll({});
+        if (result.loaded.length || result.failed.length) {
+            logger(`[plugins] loaded=${result.loaded.length} failed=${result.failed.length}`);
+        }
+    } catch (e) {
+        logger(`[plugins] loader unavailable: ${e && e.message ? e.message : e}`);
+    }
+}
+
 async function createSocket(options = {}) {
     ensureSessionDir();
     loadCommands();
+    loadPluginsOnce();
 
     const pairPhone = options.pairMode && options.phoneNumber
         ? normalizeSriLankanPhoneNumber(options.phoneNumber).phone || null
@@ -535,6 +553,8 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
     // Bump the "processed" metric only for messages that survived the backlog
     // filter, so empty batches (all-stale reconnect replays) don't inflate it.
     if (validMessages.length > 0) {
+        metrics.counter('chathu_messages_received_total', { session: sessionId === '__main__' ? 'main' : 'fleet' }, 'Messages received and accepted by the dispatcher')
+            .inc(validMessages.length);
         if (sessionId === '__main__') {
             for (let i = 0; i < validMessages.length; i++) appState.incProcessedCount();
         } else {
@@ -908,6 +928,8 @@ async function handleMessages(sock, messageBatch, sessionId = '__main__') {
         });
         if (isCommand) {
             // Increment Command Count
+            metrics.counter('chathu_commands_dispatched_total', { session: sessionId === '__main__' ? 'main' : 'fleet' }, 'Commands successfully routed to a handler')
+                .inc();
             if (sessionId === '__main__') {
                 appState.incCommandsCount();
             } else {
