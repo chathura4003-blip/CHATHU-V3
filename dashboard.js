@@ -717,9 +717,10 @@ app.get('/bot-api/stats', authMiddleware, (req, res) => {
         return (b / 1024 / 1024 / 1024).toFixed(2) + ' GB';
     }
     function fmtSpeed(bps) {
-        if (bps < 1024) return bps + ' B/s';
-        if (bps < 1024 * 1024) return (bps / 1024).toFixed(1) + ' KB/s';
-        return (bps / 1024 / 1024).toFixed(2) + ' MB/s';
+        const n = Math.max(0, Number(bps) || 0);
+        if (n < 1024) return Math.round(n) + ' B/s';
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB/s';
+        return (n / 1024 / 1024).toFixed(2) + ' MB/s';
     }
 
     let sessionCount = 1; // main bot
