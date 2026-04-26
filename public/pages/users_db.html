@@ -121,6 +121,30 @@
                     style="-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><circle cx=%2211%22 cy=%2211%22 r=%228%22/><line x1=%2221%22 y1=%2221%22 x2=%2216.65%22 y2=%2216.65%22/></svg>')"></i>
                   <input class="input" id="usersDbSearch" placeholder="Search users..." oninput="renderUsers()" />
                 </div>
+                <select class="input select" id="usersStatusFilter" onchange="renderUsers()" style="height:36px;padding:0 12px;font-size:0.85rem">
+                  <option value="all">All roles</option>
+                  <option value="owner">Owners</option>
+                  <option value="premium">Premium</option>
+                  <option value="banned">Banned</option>
+                  <option value="standard">Standard</option>
+                </select>
+                <button class="btn btn-ghost btn-sm" onclick="exportUsersCsv()" title="Export filtered users as CSV" style="height:36px">
+                  <i class="ic" style="width:14px;height:14px;-webkit-mask-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22currentColor%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4%22/><polyline points=%227 10 12 15 17 10%22/><line x1=%2212%22 y1=%2215%22 x2=%2212%22 y2=%223%22/></svg>')"></i>
+                  CSV
+                </button>
+              </div>
+            </div>
+            <div class="pt-bulk-bar" id="usersBulkBar" role="toolbar" aria-label="Bulk user actions">
+              <div class="pt-bulk-left">
+                <span class="pt-bulk-count"><b id="usersBulkCount">0</b> selected</span>
+                <button class="btn btn-ghost btn-sm" onclick="toggleAllUserSelect(false)">Clear</button>
+              </div>
+              <div class="pt-bulk-right">
+                <button class="btn btn-secondary btn-sm" onclick="bulkUsersAction('premium_on')">Grant premium</button>
+                <button class="btn btn-secondary btn-sm" onclick="bulkUsersAction('premium_off')">Revoke premium</button>
+                <button class="btn btn-secondary btn-sm" onclick="bulkUsersAction('unban')">Unban</button>
+                <button class="btn btn-danger btn-sm" onclick="bulkUsersAction('ban')">Ban</button>
+                <button class="btn btn-danger btn-sm" onclick="bulkUsersAction('delete')">Delete</button>
               </div>
             </div>
             <div id="usersDbStats" style="display:none"></div>
@@ -189,22 +213,7 @@
               style="padding:0; overflow:hidden; background: var(--panel); border: 1px solid var(--line-2); backdrop-filter: blur(20px); box-shadow: var(--shadow-lg)">
               <div class="table-wrap">
                 <table class="pro-table" style="border-collapse: collapse; width: 100%">
-                  <thead>
-                    <tr style="background: rgba(255,255,255,0.02)">
-                      <th
-                        style="padding: 18px 20px; color: var(--txt-3); text-transform: uppercase; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; border-bottom: 1px solid var(--line-2)">
-                        USER IDENTITY</th>
-                      <th
-                        style="padding: 18px 20px; color: var(--txt-3); text-transform: uppercase; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; border-bottom: 1px solid var(--line-2)">
-                        CREDITS & WALLET</th>
-                      <th
-                        style="padding: 18px 20px; color: var(--txt-3); text-transform: uppercase; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; border-bottom: 1px solid var(--line-2)">
-                        AUTHORIZATION</th>
-                      <th
-                        style="padding: 18px 20px; color: var(--txt-3); text-transform: uppercase; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.1em; border-bottom: 1px solid var(--line-2); text-align:right">
-                        ACTIONS</th>
-                    </tr>
-                  </thead>
+                  <thead id="usersDbHead"></thead>
                   <tbody id="usersDbTable">
                     <tr>
                       <td colspan="5" class="empty-row loading">Synchronizing secure user database...</td>
