@@ -255,7 +255,10 @@ async function createSocket(options = {}) {
         },
         browser: BROWSER,
         syncFullHistory: false,
-        markOnlineOnConnect: true,
+        // Keep the bot's presence offline so the linked WhatsApp phone keeps
+        // receiving native push notifications and the chat thread does not
+        // appear "stuck" / unread on the device.
+        markOnlineOnConnect: false,
         getMessage: async (key) => {
             const msg = getCachedMsg(key.remoteJid, key.id);
             return msg?.message || undefined;

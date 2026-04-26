@@ -286,7 +286,9 @@ async function startSocket(id, entry) {
             },
             browser: ['Ubuntu', 'Chrome', String(id).slice(0, 10)],
             syncFullHistory: false,
-            markOnlineOnConnect: true,
+            // Stay offline so the linked phone still receives native pushes
+            // and chats don't appear "stuck" / unread on the device.
+            markOnlineOnConnect: false,
             printQRInTerminal: false,
         });
 
