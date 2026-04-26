@@ -2876,7 +2876,7 @@
       }
       // Vim-style page nav: press 'g', then within 1.2s press a letter.
       const k = e.key.toLowerCase();
-      if (_gPending && Date.now() < _gPending && PAGE_KEYS[k]) {
+      if (_gPending && Date.now() < _gPending && PAGE_KEYS[k] && !e.ctrlKey && !e.metaKey && !e.altKey) {
         _gPending = 0;
         e.preventDefault();
         navigate(PAGE_KEYS[k]);
