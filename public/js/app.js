@@ -1190,7 +1190,7 @@
           <span class="badge" id="botAccessBadge">PUBLIC</span>
           <button class="btn btn-ghost btn-sm" onclick="closeModal('botSettingsModal')">&times;</button>
         </div>
-        <div class="modal-body" style="padding:0;display:grid;grid-template-columns:180px 1fr;gap:0;min-height:480px">
+        <div class="modal-body bot-settings-body" style="padding:0;display:grid;grid-template-columns:180px 1fr;gap:0;min-height:480px">
           <nav class="bot-nav" style="border-right:1px solid rgba(255,255,255,.06);padding:14px 8px;display:flex;flex-direction:column;gap:4px">
             <button type="button" class="bot-nav-item btn btn-ghost btn-sm" id="botNavItem-general" onclick="switchBotTab('general')" style="justify-content:flex-start">General</button>
             <button type="button" class="bot-nav-item btn btn-ghost btn-sm" id="botNavItem-identity" onclick="switchBotTab('identity')" style="justify-content:flex-start">Identity</button>
@@ -1292,6 +1292,11 @@
       if (!State.data.settings || !Object.keys(State.data.settings).length) {
         try {
           State.data.settings = await api('/bot-api/settings');
+        } catch { }
+      }
+      if (!State.data.commands || !State.data.commands.length) {
+        try {
+          State.data.commands = await api('/bot-api/commands');
         } catch { }
       }
 
