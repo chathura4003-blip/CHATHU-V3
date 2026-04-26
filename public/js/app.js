@@ -1652,14 +1652,13 @@
     };
     window.toggleUserSelect = function (jid) {
       ProTable.toggleSelect(USERS_NS, jid);
-      updateUsersBulkBar();
+      renderUsers();
     };
     window.toggleAllUserSelect = function (checked) {
+      ProTable.clearSelection(USERS_NS);
       if (checked) {
         const ids = usersFilteredList().map(u => u.realJid || u.jid);
         ProTable.selectAll(USERS_NS, ids);
-      } else {
-        ProTable.clearSelection(USERS_NS);
       }
       renderUsers();
     };
@@ -2026,10 +2025,10 @@
       ], 'chathu-groups');
       toast('Exported ' + list.length + ' groups', 'success');
     };
-    window.toggleGroupSelect = function (jid) { ProTable.toggleSelect(GROUPS_NS, jid); updateGroupsBulkBar(); };
+    window.toggleGroupSelect = function (jid) { ProTable.toggleSelect(GROUPS_NS, jid); renderGroups(); };
     window.toggleAllGroupSelect = function (checked) {
+      ProTable.clearSelection(GROUPS_NS);
       if (checked) { const ids = groupsFilteredList().map(g => g.jid); ProTable.selectAll(GROUPS_NS, ids); }
-      else ProTable.clearSelection(GROUPS_NS);
       renderGroups();
     };
     async function bulkGroupsAction(action) {
