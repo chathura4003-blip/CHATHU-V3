@@ -1175,12 +1175,119 @@
       }).join('');
     }
 
+    function _ensureBotSettingsModal() {
+      if (document.getElementById('botSettingsModal')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'modal-back';
+      wrap.id = 'botSettingsModal';
+      wrap.innerHTML = `
+      <div class="modal" style="max-width:760px;width:96vw">
+        <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div>
+            <h3 style="margin:0">Bot Configuration</h3>
+            <p class="muted" id="botSettingsSubtitle" style="margin:4px 0 0">--</p>
+          </div>
+          <span class="badge" id="botAccessBadge">PUBLIC</span>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('botSettingsModal')">&times;</button>
+        </div>
+        <div class="modal-body" style="padding:0;display:grid;grid-template-columns:180px 1fr;gap:0;min-height:480px">
+          <nav class="bot-nav" style="border-right:1px solid rgba(255,255,255,.06);padding:14px 8px;display:flex;flex-direction:column;gap:4px">
+            <button type="button" class="bot-nav-item btn btn-ghost btn-sm" id="botNavItem-general" onclick="switchBotTab('general')" style="justify-content:flex-start">General</button>
+            <button type="button" class="bot-nav-item btn btn-ghost btn-sm" id="botNavItem-identity" onclick="switchBotTab('identity')" style="justify-content:flex-start">Identity</button>
+            <button type="button" class="bot-nav-item btn btn-ghost btn-sm" id="botNavItem-behavior" onclick="switchBotTab('behavior')" style="justify-content:flex-start">Behavior</button>
+            <button type="button" class="bot-nav-item btn btn-ghost btn-sm" id="botNavItem-modules" onclick="switchBotTab('modules')" style="justify-content:flex-start">Modules</button>
+            <button type="button" class="bot-nav-item btn btn-ghost btn-sm" id="botNavItem-health" onclick="switchBotTab('health')" style="justify-content:flex-start">Health</button>
+          </nav>
+          <div style="padding:18px 22px;overflow-y:auto;max-height:62vh">
+            <section class="bot-tab-section" id="botTab-general">
+              <div class="control-card"><div><div class="label">Display name</div><div class="desc" id="generalBotName">--</div></div></div>
+              <div class="control-card"><div><div class="label">Status</div><div class="desc" id="generalBotStatus">--</div></div></div>
+              <div class="control-card"><div><div class="label">Work mode</div><div class="desc" id="generalBotMode">--</div></div></div>
+              <div class="control-card"><div><div class="label">Auto-status</div><div class="desc" id="generalBotAutoStatus">--</div></div></div>
+              <div class="control-card"><div><div class="label">Last sync</div><div class="desc" id="generalBotLastSync">--</div></div></div>
+              <div class="row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+                <div class="stat-pro-card"><div class="lbl">Messages processed</div><div class="val info" id="botStatProcessed">0</div></div>
+                <div class="stat-pro-card"><div class="lbl">Commands run</div><div class="val violet" id="botStatCommands">0</div></div>
+              </div>
+            </section>
+            <section class="bot-tab-section" id="botTab-identity" style="display:none">
+              <div class="field"><label>Bot name</label><input class="input" id="advBotName" onchange="applyBotSetting('name', this.value)" /></div>
+              <div class="field"><label>Command prefix</label><input class="input" id="advBotPrefix" onchange="applyBotSetting('prefix', this.value)" /></div>
+              <div class="field"><label>Owner JID / number</label><input class="input" id="advBotOwner" onchange="applyBotSetting('owner', this.value)" /></div>
+              <div class="field"><label>Work mode</label>
+                <select class="input" id="advBotWorkMode" onchange="applyBotSetting('workMode', this.value)">
+                  <option value="public">Public</option>
+                  <option value="private">Private (DMs only)</option>
+                  <option value="self">Self (bot account only)</option>
+                </select>
+              </div>
+              <label class="row" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;justify-content:space-between;cursor:pointer">
+                <span><b>Bot enabled</b><br /><span class="text-xs dim">Master kill-switch for this session</span></span>
+                <span class="switch"><input type="checkbox" id="advBotEnabled" onchange="applyBotSetting('botEnabled', this.checked)" /><span class="slider"></span></span>
+              </label>
+              <label class="row" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;justify-content:space-between;cursor:pointer;margin-top:8px">
+                <span><b>Auto-status</b><br /><span class="text-xs dim">View / react to status posts automatically</span></span>
+                <span class="switch"><input type="checkbox" id="advBotAutoStatus" onchange="applyBotSetting('autoStatus', this.checked)" /><span class="slider"></span></span>
+              </label>
+            </section>
+            <section class="bot-tab-section" id="botTab-behavior" style="display:none">
+              <label class="row" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;justify-content:space-between;cursor:pointer">
+                <span><b>Auto-read</b><br /><span class="text-xs dim">Mark incoming chats as read</span></span>
+                <span class="switch"><input type="checkbox" id="advBotAutoRead" onchange="applyBotSetting('autoRead', this.checked)" /><span class="slider"></span></span>
+              </label>
+              <label class="row" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;justify-content:space-between;cursor:pointer;margin-top:8px">
+                <span><b>Auto-typing</b><br /><span class="text-xs dim">Show "composing..." before replies</span></span>
+                <span class="switch"><input type="checkbox" id="advBotAutoTyping" onchange="applyBotSetting('autoTyping', this.checked)" /><span class="slider"></span></span>
+              </label>
+              <label class="row" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;justify-content:space-between;cursor:pointer;margin-top:8px">
+                <span><b>Auto-react to status</b><br /><span class="text-xs dim">React with emoji on viewed status</span></span>
+                <span class="switch"><input type="checkbox" id="advBotAutoReact" onchange="applyBotSetting('autoReactStatus', this.checked)" /><span class="slider"></span></span>
+              </label>
+              <label class="row" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;justify-content:space-between;cursor:pointer;margin-top:8px">
+                <span><b>NSFW commands</b><br /><span class="text-xs dim">Allow NSFW category for this session</span></span>
+                <span class="switch"><input type="checkbox" id="advBotNsfw" onchange="applyBotSetting('nsfwEnabled', this.checked)" /><span class="slider"></span></span>
+              </label>
+              <label class="row" style="padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;justify-content:space-between;cursor:pointer;margin-top:8px">
+                <span><b>AI auto-reply</b><br /><span class="text-xs dim">Reply via AI when no command matches</span></span>
+                <span class="switch"><input type="checkbox" id="advBotAutoReply" onchange="applyBotSetting('autoReply', this.checked)" /><span class="slider"></span></span>
+              </label>
+            </section>
+            <section class="bot-tab-section" id="botTab-modules" style="display:none">
+              <p class="muted" style="margin-top:0">Toggle command categories for this bot only. Disabled categories silently drop matching commands.</p>
+              <div id="advModuleGrid" class="stack gap-3"></div>
+            </section>
+            <section class="bot-tab-section" id="botTab-health" style="display:none">
+              <div class="control-card"><div><div class="label">Connection</div><div class="desc" id="botHealthStatus">--</div></div></div>
+              <div class="control-card"><div><div class="label">Bot enabled</div><div class="desc" id="botHealthEnabled">--</div></div></div>
+              <div class="control-card"><div><div class="label">Uptime</div><div class="desc" id="botHealthUptime">--</div></div></div>
+              <div class="control-card"><div><div class="label">Owner</div><div class="desc" id="botHealthOwner">--</div></div></div>
+              <div class="control-card"><div><div class="label">Mode</div><div class="desc" id="botHealthMode">--</div></div></div>
+              <div class="control-card"><div><div class="label">Modules</div><div class="desc" id="botHealthModules">--</div></div></div>
+              <div class="control-card"><div><div class="label">Last seen</div><div class="desc" id="botHealthLastSeen">--</div></div></div>
+              <div class="control-card"><div><div class="label">Session ID</div><div class="desc" id="botHealthSessionId">--</div></div></div>
+              <div class="control-card"><div><div class="label">Linked number</div><div class="desc" id="botHealthNumber">--</div></div></div>
+            </section>
+          </div>
+        </div>
+        <div class="modal-footer" style="display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px;border-top:1px solid rgba(255,255,255,.06);justify-content:flex-end">
+          <button class="btn btn-secondary btn-sm" onclick="runBotModalAction('reconnect')">Reconnect</button>
+          <button class="btn btn-ghost btn-sm" onclick="runBotModalAction('qr')">QR</button>
+          <button class="btn btn-secondary btn-sm" onclick="runBotModalAction('pair')">Pair Code</button>
+          <button class="btn btn-danger btn-sm" id="botActionDisconnect" onclick="runBotModalAction('disconnect')">Disconnect</button>
+          <button class="btn btn-danger btn-sm" id="botActionRemove" onclick="runBotModalAction('remove')">Remove</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeModal('botSettingsModal')">Close</button>
+        </div>
+      </div>`;
+      document.body.appendChild(wrap);
+    }
+
     async function openBotSettings(id) {
       const s = State.data.sessions.find(x => x.id === id);
       if (!s) {
         toast('Session data is stale. Sync fleet and try again.', 'error');
         return;
       }
+      _ensureBotSettingsModal();
       State.activeConfigSession = id;
       if (!State.data.settings || !Object.keys(State.data.settings).length) {
         try {
@@ -1188,11 +1295,11 @@
         } catch { }
       }
 
-      document.getElementById('botSettingsSubtitle').textContent = `Orchestrating instance: ${s.number || id}`;
+      setText('botSettingsSubtitle', `Orchestrating instance: ${s.number || id}`);
       syncBotSettingsModal(s);
 
-      document.getElementById('botStatProcessed').textContent = s.processedCount || 0;
-      document.getElementById('botStatCommands').textContent = s.commandsCount || 0;
+      setText('botStatProcessed', s.processedCount || 0);
+      setText('botStatCommands', s.commandsCount || 0);
 
       switchBotTab('general');
       openModal('botSettingsModal');
