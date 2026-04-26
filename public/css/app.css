@@ -354,6 +354,29 @@
       animation: slideIn .5s cubic-bezier(.22, 1, .36, 1);
       position: relative;
       overflow: hidden;
+      color: #f1f5f9;
+    }
+
+    /* Login card always renders on a dark gradient regardless of theme —
+       force light-on-dark text + readable inputs inside the card. */
+    .login-card h1,
+    .login-card h2,
+    .login-card h3,
+    .login-card label,
+    .login-card .field label {
+      color: #f1f5f9
+    }
+    .login-card p,
+    .login-card .login-brand p {
+      color: rgba(241, 245, 249, .68)
+    }
+    .login-card .input {
+      color: #f1f5f9;
+      background: rgba(8, 12, 20, .42);
+      border: 1px solid rgba(255, 255, 255, .12)
+    }
+    .login-card .input::placeholder {
+      color: rgba(241, 245, 249, .42)
     }
 
     .login-card::before {
@@ -2886,6 +2909,15 @@
       font-size: .85rem;
       flex-direction: column;
       gap: 10px
+    }
+
+    /* QR placeholder lives inside .modal which forces light text. The QR wrap
+       has a white background while a real QR is loading, so force dark text
+       inside it so the placeholder copy stays readable. */
+    .modal .qr-wrap,
+    .modal .qr-wrap span,
+    .modal .qr-wrap p {
+      color: #4a4f59
     }
 
     .pair-display {
